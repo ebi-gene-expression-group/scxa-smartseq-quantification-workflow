@@ -1,12 +1,12 @@
 #!/usr/bin/env nextflow
 
-sdrfFile = file("${params.sdrf}")
-resultsRoot = file("${params.resultsRoot}")
+sdrfFile = params.sdrf
+resultsRoot = params.resultsRoot
 
 // Read ENA_RUN column from an SDRF
 
 Channel
-    .fromPath(sdrfFile)
+    .fromPath(sdrfFile, checkIfExists: true)
     .splitCsv(header:true, sep:"\t")
     .filter{ row -> (! row.containsKey(params.fields.quality)) || ( row["${params.fields.quality}"].toLowerCase() != 'not ok') }
     .into {
@@ -27,8 +27,8 @@ FASTQ_RUNS1
 
 // Prepare reference data, merging spikes with cDNAs where necessary
 
-CDNA_FASTA = Channel.fromPath( "$SCXA_DATA/reference/${params.reference.cdna}" )
-CDNA_GTF = Channel.fromPath( "$SCXA_DATA/reference/${params.reference.gtf}" )
+CDNA_FASTA = Channel.fromPath( "$SCXA_DATA/reference/${params.reference.cdna}", checkIfExists: true )
+CDNA_GTF = Channel.fromPath( "$SCXA_DATA/reference/${params.reference.gtf}", checkIfExists: true )
 
 if ( params.reference.containsKey( 'spikes' )){
     SPIKES_FASTA = Channel.fromPath( "${SCXA_DATA}/reference/${params.reference.spikes.cdna}" )
