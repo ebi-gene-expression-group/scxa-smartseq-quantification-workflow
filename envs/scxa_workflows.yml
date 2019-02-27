@@ -1,0 +1,4 @@
+name: scxa_workflows
+dependencies:
+  - nextflow=19.01
+  - r-optparse

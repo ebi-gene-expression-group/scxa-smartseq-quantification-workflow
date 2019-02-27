@@ -1,0 +1,12 @@
+name: kallisto_matrix
+dependencies:
+  - bioconductor-genomeinfodbdata
+  - openssl=1.0
+  - bioconductor-tximport
+  - r-optparse
+  - r-readr
+  - r-rjson
+  - r-workflowscriptscommon
+  - r-matrix
+  - bioconductor-dropletutils
+  - tximport-scripts
