@@ -1,6 +1,7 @@
 #!/usr/bin/env nextflow
 
 sdrfFile = file("${params.sdrf}")
+resultsRoot = file("${params.resultsRoot}")
 
 // Read ENA_RUN column from an SDRF
 
@@ -39,7 +40,7 @@ if ( params.reference.containsKey( 'spikes' )){
 
 process prepare_reference {
     
-    publishDir "$SCXA_RESULTS/reference", mode: 'copy', overwrite: true
+    publishDir "$resultsRoot/reference", mode: 'copy', overwrite: true
    
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
     
@@ -121,7 +122,7 @@ process raw_fastqc {
     errorStrategy { task.attempt<=10 ? 'retry' : 'finish' } 
     memory { 2.GB * task.attempt }
  
-    publishDir "$SCXA_RESULTS/qc/fastqc/raw", mode: 'copy', overwrite: true
+    publishDir "$resultsRoot/qc/fastqc/raw", mode: 'copy', overwrite: true
     
     input:
         set val(runId), file(runFastq) from DOWNLOADED_FASTQS_FASTQC
@@ -296,7 +297,7 @@ process filtered_fastqc {
     errorStrategy { task.attempt<=10 ? 'retry' : 'finish' } 
     memory { 2.GB * task.attempt }
 
-    publishDir "$SCXA_RESULTS/qc/fastqc/filtered", mode: 'copy', overwrite: true
+    publishDir "$resultsRoot/qc/fastqc/filtered", mode: 'copy', overwrite: true
     
     input:
         set val(runId), file(runFastq) from FILTERED_FASTQS_FASTQC
@@ -316,7 +317,7 @@ process filtered_fastqc_tsv {
 
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
     
-    publishDir "$SCXA_RESULTS/qc/fastqc/filtered", mode: 'copy', overwrite: true
+    publishDir "$resultsRoot/qc/fastqc/filtered", mode: 'copy', overwrite: true
     
     input:
         set val(runId), file(runFilteredFastqc) from FILTERED_FASTQC
@@ -357,7 +358,7 @@ process count_reads {
 
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
     
-    publishDir "$SCXA_RESULTS/qc/counts", mode: 'copy', overwrite: true
+    publishDir "$resultsRoot/qc/counts", mode: 'copy', overwrite: true
     
     input:
         set val(fileName), file(runFastq), file('art.fastq.gz'), file('cont.fastq.gz'), file('filt.fastq.gz') from FASTQS_FOR_COUNTING_BY_FILENAME    
@@ -385,7 +386,7 @@ process count_reads {
 //    errorStrategy 'retry'
 //    maxRetries 3
 
-//    publishDir "$SCXA_RESULTS/qc/contamination", mode: 'copy', overwrite: true
+//    publishDir "$resultsRoot/qc/contamination", mode: 'copy', overwrite: true
 
 //    input:
 //        set val(fileName), file(runBam), file(runCounts) from CONT_BAMS.join(FASTQ_COUNTS)
@@ -528,7 +529,7 @@ process kallisto_single {
 
     conda "${baseDir}/envs/kallisto.yml"
     
-    publishDir "$SCXA_RESULTS/kallisto", mode: 'copy', overwrite: true
+    publishDir "$resultsRoot/kallisto", mode: 'copy', overwrite: true
     
     memory { 4.GB * task.attempt }
     time { 3.hour * task.attempt }
@@ -566,7 +567,7 @@ process kallisto_paired {
 
     conda "${baseDir}/envs/kallisto.yml"
     
-    publishDir "$SCXA_RESULTS/kallisto", mode: 'copy', overwrite: true
+    publishDir "$resultsRoot/kallisto", mode: 'copy', overwrite: true
     
     memory { 4.GB * task.attempt }
     time { 3.hour * task.attempt }
