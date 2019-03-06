@@ -122,7 +122,7 @@ process raw_fastqc {
     errorStrategy { task.attempt<=10 ? 'retry' : 'finish' } 
     memory { 2.GB * task.attempt }
  
-    publishDir "$resultsRoot/qc/fastqc/raw", mode: 'move', overwrite: true
+    publishDir "$resultsRoot/qc/fastqc/raw", mode: 'copy', overwrite: true
     
     input:
         set val(runId), file(runFastq) from DOWNLOADED_FASTQS_FASTQC
@@ -317,7 +317,7 @@ process filtered_fastqc_tsv {
 
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
     
-    publishDir "$resultsRoot/qc/fastqc/filtered", mode: 'move', overwrite: true
+    publishDir "$resultsRoot/qc/fastqc/filtered", mode: 'copy', overwrite: true
     
     input:
         set val(runId), file(runFilteredFastqc) from FILTERED_FASTQC
@@ -358,7 +358,7 @@ process count_reads {
 
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
     
-    publishDir "$resultsRoot/qc/counts", mode: 'move', overwrite: true
+    publishDir "$resultsRoot/qc/counts", mode: 'copy', overwrite: true
     
     input:
         set val(fileName), file(runFastq), file('art.fastq.gz'), file('cont.fastq.gz'), file('filt.fastq.gz') from FASTQS_FOR_COUNTING_BY_FILENAME    
