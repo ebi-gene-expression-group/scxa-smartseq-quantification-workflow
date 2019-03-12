@@ -2,6 +2,8 @@
 
 sdrfFile = params.sdrf
 resultsRoot = params.resultsRoot
+referenceFasta = params.referenceFasta
+contaminationIndex = params.contaminationIndex
 
 // Read ENA_RUN column from an SDRF
 
@@ -25,55 +27,7 @@ FASTQ_RUNS1
         FASTQ_RUNS
     }
 
-// Prepare reference data, merging spikes with cDNAs where necessary
-
-CDNA_FASTA = Channel.fromPath( "$SCXA_DATA/reference/${params.reference.cdna}", checkIfExists: true )
-CDNA_GTF = Channel.fromPath( "$SCXA_DATA/reference/${params.reference.gtf}", checkIfExists: true )
-
-if ( params.reference.containsKey( 'spikes' )){
-    SPIKES_FASTA = Channel.fromPath( "${SCXA_DATA}/reference/${params.reference.spikes.cdna}" )
-    SPIKES_GTF = Channel.fromPath( "${SCXA_DATA}/reference/${params.reference.spikes.gtf}" )
-}else{
-    SPIKES_FASTA = file('NO SPIKES')
-    SPIKES_GTF = file('NO SPIKES GTF')
-}
-
-process prepare_reference {
-    
-    publishDir "$resultsRoot/reference", mode: 'copy', overwrite: true
-   
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
-    
-    cache true
-
-    input:
-        file(cdnaFile) from CDNA_FASTA
-        file(spikesCdnaFile) from SPIKES_FASTA
-        file(gtfFile) from CDNA_GTF
-        file(spikesGtfFile) from SPIKES_GTF
-           
-    output:
-        file("reference.fastq.gz") into REFERENCE_FASTA      
-        file("reference.gtf.gz") into REFERENCE_GTF
-
-    script:
-
-        def cdnaCommand
-        def gtfCommand
-
-        if ( spikesCdnaFile.name == 'NO SPIKES' ){
-            cdnaCommand = "ln -s $cdnaFile reference.fastq.gz"  
-            gtfCommand = "ln -s $gtfFile reference.gtf.gz"  
-        }else{
-            cdnaCommand = "cat $cdnaFile $spikesCdnaFile > reference.fastq.gz"  
-            gtfCommand = "cat $gtfFile $spikesGtfFile > reference.gtf.gz"  
-        }
-
-        """
-            $cdnaCommand
-            $gtfCommand
-        """
-}
+REFERENCE_FASTA = Channel.fromPath( referenceFasta, checkIfExists: true )
 
 // Call the download script to retrieve run fastqs
 
@@ -249,7 +203,7 @@ process quality_contamination {
 
     """
         bowtie2 -p 8 --very-fast --un contfilt/${runFastq} --fast-local --phred33 \
-            -x $SCXA_DATA/contamination/${params.reference.contamination_index} \
+            -x $contaminationIndex} \
             -U ${runFastq} -S /dev/stdout | samtools view -S -b -F 4 - > contfilt/${runId}.cont.bam
     """
 }
