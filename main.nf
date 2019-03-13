@@ -203,8 +203,8 @@ process quality_contamination {
 
     """
         bowtie2 -p 8 --very-fast --un contfilt/${runFastq} --fast-local --phred33 \
-            -x $contaminationIndex} \
-            -U ${runFastq} -S /dev/stdout | samtools view -S -b -F 4 - > contfilt/${runId}.cont.bam
+            -x $contaminationIndex -U ${runFastq} -S /dev/stdout | \
+            samtools view -S -b -F 4 - > contfilt/${runId}.cont.bam
     """
 }
 
