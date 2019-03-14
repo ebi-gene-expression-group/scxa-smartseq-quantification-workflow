@@ -317,18 +317,10 @@ process count_reads {
     output:
         set val("${fileName}"), stdout into FASTQ_COUNTS
         
-    script:
-
-        // Get file object for staged files so we can use countFastq()        
-
-        runFastq = file(runFastq)
-        artFastq = file('art.fastq.gz')
-        contFastq = file('cont.fastq.gz')
-        filtFastq = file('filt.fastq.gz')
-
     """
-        echo ${runFastq.simpleName},${runFastq.countFastq()},${artFastq.countFastq()},${contFastq.countFastq()},${filtFastq.countFastq()}
+        echo ${runFastq.simpleName},${runFastq.countFastq()}
     """
+        //echo ${runFastq.simpleName},${runFastq.countFastq()},${artFastq.countFastq()},${contFastq.countFastq()},${filtFastq.countFastq()}
 }
 
 // Collect the count lines and add a header
