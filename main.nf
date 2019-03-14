@@ -327,9 +327,28 @@ process count_reads {
 
 // Collect the count lines and add a header
 
-Channel.value( "name,raw,artefacts_removed,contamination_filtered,uncalled_filtered\n" )
-    .concat(FASTQ_COUNTS)
-    .collectFile(name: 'fastq_counts.csv', storeDir: "$resultsRoot/qc/counts", sort: true)
+FASTQ_COUNTS.
+    .collectFile(name: 'fastq_counts_nohead.csv', sort: true)
+    .set{
+        MERGED_FASTQ_COUNTS
+    }
+
+process head_counts {
+
+    publishDir "$resultsRoot/qc/counts", mode: 'copy', overwrite: true
+
+    input:
+       file(mergedCounts) from MERGED_FASTQ_COUNTS
+
+    output:
+       file('fastq_counts.csv')
+
+    """
+        echo "name,raw,artefacts_removed,contamination_filtered,uncalled_filtered" > fastq_counts.csv
+        cat $mergedCounts >> fastq_counts.csv
+    """ 
+}
+
 
 // Group read files by run name with strandedness
 
