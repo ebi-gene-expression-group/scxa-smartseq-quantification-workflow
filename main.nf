@@ -325,7 +325,7 @@ process count_reads {
 // Collect the count lines and add a header
 
 Channel.value( "name,raw,artefacts_removed,contamination_filtered,uncalled_filtered" )
-    .concat(FASTQ_COUNTS).
+    .concat(FASTQ_COUNTS)
     .collectFile('fastq_counts.csv', storeDir = "$resultsRoot/qc/counts")
     .set{
         COLLECTED_FASTQ_COUNTS
