@@ -308,19 +308,23 @@ DOWNLOADED_FASTQS_COUNTS
 
 // Summarise counts at each filtering step
 
+
 process count_reads {
     
+    conda 'irap-components'
+
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
     
+    publishDir "$resultsRoot/qc/counts", mode: 'copy', overwrite: true
+    
     input:
-        set val(fileName), file(runFastq), file('art.fastq.gz'), file('cont.fastq.gz'), file('filt.fastq.gz') from FASTQS_FOR_COUNTING_BY_FILENAME
+        set val(fileName), file(runFastq), file('art.fastq.gz'), file('cont.fastq.gz'), file('filt.fastq.gz') from FASTQS_FOR_COUNTING_BY_FILENAME    
     output:
         set val("${fileName}"), stdout into FASTQ_COUNTS
         
     """
-        echo ${runFastq.simpleName},${runFastq.countFastq()}
+        echo ${runFastq.simpleName},`num_reads.sh ${runFastq}`,`num_reads.sh art.fastq.gz`,`num_reads.sh cont.fastq.gz`,`num_reads.sh filt.fastq.gz`
     """
-        //echo ${runFastq.simpleName},${runFastq.countFastq()},${artFastq.countFastq()},${contFastq.countFastq()},${filtFastq.countFastq()}
 }
 
 // Collect the count lines and add a header
