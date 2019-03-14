@@ -315,12 +315,10 @@ process count_reads {
 
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
     
-    publishDir "$resultsRoot/qc/counts", mode: 'copy', overwrite: true
-    
     input:
         set val(fileName), file(runFastq), file('art.fastq.gz'), file('cont.fastq.gz'), file('filt.fastq.gz') from FASTQS_FOR_COUNTING_BY_FILENAME    
     output:
-        set val("${fileName}"), stdout into FASTQ_COUNTS
+        stdout  FASTQ_COUNTS
         
     """
         echo ${runFastq.simpleName},`num_reads.sh ${runFastq}`,`num_reads.sh art.fastq.gz`,`num_reads.sh cont.fastq.gz`,`num_reads.sh filt.fastq.gz`
@@ -332,9 +330,6 @@ process count_reads {
 Channel.value( "name,raw,artefacts_removed,contamination_filtered,uncalled_filtered" )
     .concat(FASTQ_COUNTS)
     .collectFile(name: 'fastq_counts.csv', storeDir: "$resultsRoot/qc/counts")
-    .set{
-        COLLECTED_FASTQ_COUNTS
-    }
 
 // Group read files by run name with strandedness
 
