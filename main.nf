@@ -190,7 +190,7 @@ process quality_contamination {
     time { 3.hour * task.attempt }
     cpus 8
 
-    errorStrategy { task.exitStatus == 130 ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
     maxRetries 20
 
     input:
@@ -456,7 +456,7 @@ process kallisto_index {
     time { 3.hour * task.attempt }
     cpus 8
 
-    errorStrategy { task.exitStatus == 130 ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
     maxRetries 20
     
     input:
@@ -488,7 +488,7 @@ process kallisto_single {
     memory { 4.GB * task.attempt }
     time { 3.hour * task.attempt }
     cpus 8
-    errorStrategy { task.exitStatus == 130 ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
     maxRetries 20
 
     input:
@@ -526,7 +526,7 @@ process kallisto_paired {
     memory { 4.GB * task.attempt }
     time { 3.hour * task.attempt }
     cpus 8
-    errorStrategy { task.exitStatus == 130 ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
     maxRetries 20
 
     input:
