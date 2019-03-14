@@ -426,7 +426,7 @@ process synchronise_pairs {
   
     memory { 5.GB * task.attempt }
 
-    errorStrategy { task.exitStatus == 130 ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
     maxRetries 3
     
     input:
