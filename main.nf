@@ -327,9 +327,9 @@ process count_reads {
 
 // Collect the count lines and add a header
 
-Channel.value( "name,raw,artefacts_removed,contamination_filtered,uncalled_filtered" )
+Channel.value( "name,raw,artefacts_removed,contamination_filtered,uncalled_filtered\n" )
     .concat(FASTQ_COUNTS)
-    .collectFile(name: 'fastq_counts.csv', storeDir: "$resultsRoot/qc/counts")
+    .collectFile(name: 'fastq_counts.csv', storeDir: "$resultsRoot/qc/counts", sort: true)
 
 // Group read files by run name with strandedness
 
