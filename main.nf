@@ -329,7 +329,7 @@ countsHeader.text = "name,raw,artefacts_removed,contamination_filtered,uncalled_
 
 Channel.value( countsHeader )
     .concat(FASTQ_COUNTS)
-    .collectFile(name: 'fastq_counts.csv', storeDir = "$resultsRoot/qc/counts")
+    .collectFile(name: 'fastq_counts.csv', storeDir: "$resultsRoot/qc/counts")
     .set{
         COLLECTED_FASTQ_COUNTS
     }
