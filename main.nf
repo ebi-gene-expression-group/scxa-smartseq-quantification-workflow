@@ -480,7 +480,7 @@ process kallisto_single {
 
     conda "${baseDir}/envs/kallisto.yml"
     
-    publishDir "$resultsRoot/kallisto", mode: 'move', overwrite: true
+    publishDir "$resultsRoot/kallisto", mode: 'copy', overwrite: true
     
     memory { 4.GB * task.attempt }
     time { 3.hour * task.attempt }
@@ -518,7 +518,7 @@ process kallisto_paired {
 
     conda "${baseDir}/envs/kallisto.yml"
     
-    publishDir "$resultsRoot/kallisto", mode: 'move', overwrite: true
+    publishDir "$resultsRoot/kallisto", mode: 'copy', overwrite: true
     
     memory { 4.GB * task.attempt }
     time { 3.hour * task.attempt }
