@@ -450,7 +450,7 @@ process kallisto_index {
     conda "${baseDir}/envs/kallisto.yml"
 
     // Cache based on path and file size
-    cache 'lenient'
+    cache 'deep'
     
     memory { 5.GB * task.attempt }
     time { 3.hour * task.attempt }
