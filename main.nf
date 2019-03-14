@@ -327,7 +327,7 @@ process count_reads {
 
 // Collect the count lines and add a header
 
-FASTQ_COUNTS.
+FASTQ_COUNTS
     .collectFile(name: 'fastq_counts_nohead.csv', sort: true)
     .set{
         MERGED_FASTQ_COUNTS
