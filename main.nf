@@ -306,51 +306,30 @@ DOWNLOADED_FASTQS_COUNTS
     }
 
 
+// Summarise counts at each filtering step
+
 process count_reads {
     
-    conda 'irap-components'
-
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
     
-    publishDir "$resultsRoot/qc/counts", mode: 'copy', overwrite: true
-    
     input:
-        set val(fileName), file(runFastq), file('art.fastq.gz'), file('cont.fastq.gz'), file('filt.fastq.gz') from FASTQS_FOR_COUNTING_BY_FILENAME    
+        set val(fileName), file(runFastq), file(artFastq), file(contFastq), file(filtFastq) from FASTQS_FOR_COUNTING_BY_FILENAME    
     output:
         set val("${fileName}"), file("${fileName}.counts.tsv") into FASTQ_COUNTS
         
     """
-        echo ${runFastq.simpleName},`num_reads.sh ${runFastq}`,`num_reads.sh art.fastq.gz`,`num_reads.sh cont.fastq.gz`,`num_reads.sh filt.fastq.gz` > ${fileName}.counts.tsv
+        echo ${runFastq.simpleName},${runFastq.countFastq()},${artFastq.countFastq()},${contFastq.countFastq()},${filtFastq.countFastq()} > ${fileName}.counts.tsv
     """
 }
 
-// Make stats on contamination
-// DISABLED. This is prolematic for some reason. Something to do with the
-// activation script associated with irap-components causes problems with the R
-// environment and errors like:
-// "/nfs/production3/ma/home/jmanning/projects/scxa_worflows/envs/env-d6d12efaa2338dba61a29176f5a2a115/lib/R/bin/R:
-// line 238:
-// /nfs/production3/ma/home/jmanning/projects/scxa_worflows/envs/env-d6d12efaa2338dba61a29176f5a2a115/lib/R/etc/ldpaths:
-// No such file or directory". We don't actually use these results for anything, so turning it of is fine for now.
+// Collect the count lines and add a header
 
-//process characterise_contaminants {
-//
-//    conda 'irap-components'
-    
-//    errorStrategy 'retry'
-//    maxRetries 3
-
-//    publishDir "$resultsRoot/qc/contamination", mode: 'copy', overwrite: true
-
-//    input:
-//        set val(fileName), file(runBam), file(runCounts) from CONT_BAMS.join(FASTQ_COUNTS)
-//    output:
-//        set val(fileName), file("${fileName}.cont.stats.tsv") into CONT_STATS
-
-//    """
-//        irap_cont_stats.R --bam ${runBam} --reads `cut -f 2 ${runCounts} -d,` --out ${fileName}.cont.stats.tsv
-//    """
-//}
+Channel.value( "name,raw,artefacts_removed,contamination_filtered,uncalled_filtered" )
+    .concat(FASTQ_COUNTS).
+    .collectFile('fastq_counts.csv', storeDir = "$resultsRoot/qc/counts")
+    .set{
+        COLLECTED_FASTQ_COUNTS
+    }
 
 // Group read files by run name with strandedness
 
@@ -362,7 +341,6 @@ SDRF_FOR_STRAND
 
 FILTERED_FASTQS_QUANT
     .groupTuple(sort: true)
-//    .map{ it.flatten() }
     .set{ GROUPED_FILTERED_FASTQS }
 
 // Note: following the below these tuples will now be: <run id> <strandedness> <fastq files>
