@@ -40,8 +40,9 @@ process configure_download {
         if (params.containsKey('enaSshUser') && params.enaSshUser != 'null'){
             downloadConfig.append("ENA_SSH_USER='${params.enaSshUser}'\n)
         }
-        downloadConfig.append("ENA_RETRIES='${params.downloadRetries}'\n)
-        downloadConfig.append("FETCH_FREQ_MILLIS='${params.fetchFreqMillis}'\n)
+        downloadConfig.append("ENA_RETRIES='${params.downloadRetries}'\n")
+        downloadConfig.append("FETCH_FREQ_MILLIS='${params.fetchFreqMillis}'\n")
+        downloadConfig.append("FASTQ_PROVIDER_TEMPDIR='$NXF_TEMP/atlas-fastq-provider\n'")
 }
 
 // Call the download script to retrieve run fastqs
