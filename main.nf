@@ -33,7 +33,7 @@ REFERENCE_FASTA = Channel.fromPath( referenceFasta, checkIfExists: true )
 
 process configure_download {
     output:
-        'download_config.sh' into DOWNLOAD_CONFIG
+        file('download_config.sh') into DOWNLOAD_CONFIG
 
     script:
         downloadConfig = file('download_config.sh')
