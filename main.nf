@@ -37,12 +37,20 @@ process configure_download {
 
     script:
         downloadConfig = file('download_config.sh')
-        if (params.containsKey('enaSshUser') && params.enaSshUser != 'null'){
-            downloadConfig.append("ENA_SSH_USER='${params.enaSshUser}'\n")
-        }
-        downloadConfig.append("ENA_RETRIES='${params.downloadRetries}'\n")
-        downloadConfig.append("FETCH_FREQ_MILLIS='${params.fetchFreqMillis}'\n")
-        downloadConfig.append("FASTQ_PROVIDER_TEMPDIR='$NXF_TEMP/atlas-fastq-provider\n'")
+        sshUser=''
+        if (params.containsKey('enaSshUser')){
+            sshUser=params.enaSshUser
+        }      
+
+        """
+            echo ENA_RETRIES='${params.downloadRetries}' > download_config.sh
+            echo FETCH_FREQ_MILLIS='${params.fetchFreqMillis}' >> download_config.sh
+            echo FASTQ_PROVIDER_TEMPDIR='$NXF_TEMP/atlas-fastq-provider' >> download_config.sh
+
+            if [ -n "$sshUser" ]; then
+                echo ENA_SSH_USER='${params.enaSshUser}' >> download_config.sh
+            fi
+        """
 }
 
 // Call the download script to retrieve run fastqs
@@ -57,7 +65,7 @@ process download_fastqs {
     
     input:
         set runId, runFastq from FASTQ_RUNS
-        file(downloadConfig) from DOWNLOAD_CONFIG.first()    
+        file(downloadConfig) from DOWNLOAD_CONFIG  
 
     output:
         set val(runId), file("${runId}_1.fastq.gz") optional true into DOWNLOADED_FASTQS_R1
