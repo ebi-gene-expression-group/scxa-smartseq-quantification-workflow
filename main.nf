@@ -4,7 +4,6 @@ sdrfFile = params.sdrf
 resultsRoot = params.resultsRoot
 referenceFasta = params.referenceFasta
 contaminationIndex = params.contaminationIndex
-fastqProviderConfig = params.atlas_fastq_provider_config
 
 // Read ENA_RUN column from an SDRF
 
@@ -30,6 +29,21 @@ FASTQ_RUNS1
 
 REFERENCE_FASTA = Channel.fromPath( referenceFasta, checkIfExists: true )
 
+// Make a configuration for the Fastq provider
+
+process configure_download {
+    output:
+        'download_config.sh' into DOWNLOAD_CONFIG
+
+    script:
+        downloadConfig = file('download_config.sh')
+        if (params.containsKey('enaSshUser')){
+            downloadConfig.append("ENA_SSH_USER='${params.enaSshUser}'\n)
+        }
+        downloadConfig.append("ENA_RETRIES='${params.downloadRetries}'\n)
+        downloadConfig.append("FETCH_FREQ_MILLIS='${params.fetchFreqMillis}'\n)
+}
+
 // Call the download script to retrieve run fastqs
 
 process download_fastqs {
@@ -42,14 +56,15 @@ process download_fastqs {
     
     input:
         set runId, runFastq from FASTQ_RUNS
-    
+        file(downloadConfig) from DOWNLOAD_CONFIG.first()    
+
     output:
         set val(runId), file("${runId}_1.fastq.gz") optional true into DOWNLOADED_FASTQS_R1
         set val(runId), file("${runId}_2.fastq.gz") optional true into DOWNLOADED_FASTQS_R2
         set val(runId), file("${runId}.fastq.gz") optional true into DOWNLOADED_FASTQS_UNPAIRED
 
     """
-        fetchFastq.sh -f ${runFastq} -t ${runFastq.getName} -m auto -c ${fastqProviderConfig}
+        fetchFastq.sh -f ${runFastq} -t ${runFastq.getName} -m auto -c ${downloadConfig}
     """
 }
 
