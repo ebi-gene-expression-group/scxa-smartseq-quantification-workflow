@@ -37,7 +37,7 @@ process configure_download {
 
     script:
         downloadConfig = file('download_config.sh')
-        if (params.containsKey('enaSshUser')){
+        if (params.containsKey('enaSshUser') && params.enaSshUser != 'null'){
             downloadConfig.append("ENA_SSH_USER='${params.enaSshUser}'\n)
         }
         downloadConfig.append("ENA_RETRIES='${params.downloadRetries}'\n)
