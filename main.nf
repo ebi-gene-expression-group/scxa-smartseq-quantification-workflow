@@ -73,7 +73,7 @@ process download_fastqs {
         set val(runId), file("${runId}.fastq.gz") optional true into DOWNLOADED_FASTQS_UNPAIRED
 
     """
-        fetchFastq.sh -f ${runFastq} -t ${runFastq.getName} -m auto -c ${downloadConfig}
+        fetchFastq.sh -f ${runFastq} -t ${runFastq.getName()} -m auto -c ${downloadConfig}
     """
 }
 
