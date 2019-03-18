@@ -4,6 +4,7 @@ sdrfFile = params.sdrf
 resultsRoot = params.resultsRoot
 referenceFasta = params.referenceFasta
 contaminationIndex = params.contaminationIndex
+fastqProviderConfig = params.atlas_fastq_provider_config
 
 // Read ENA_RUN column from an SDRF
 
@@ -33,6 +34,8 @@ REFERENCE_FASTA = Channel.fromPath( referenceFasta, checkIfExists: true )
 
 process download_fastqs {
     
+    conda "${baseDir}/envs/atlas-fastq-provider.yml"
+    
     maxForks 12
 
     errorStrategy { task.attempt<=10 ? 'retry' : 'finish' } 
@@ -46,7 +49,7 @@ process download_fastqs {
         set val(runId), file("${runId}.fastq.gz") optional true into DOWNLOADED_FASTQS_UNPAIRED
 
     """
-        fetchEnaFastqFtpUriViaSsh.sh ${runFastq}
+        fetchFastq.sh -f ${runFastq} -t ${runFastq.getName} -m auto -c ${fastqProviderConfig}
     """
 }
 
