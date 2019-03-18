@@ -29,9 +29,13 @@ FASTQ_RUNS1
 
 REFERENCE_FASTA = Channel.fromPath( referenceFasta, checkIfExists: true )
 
-// Make a configuration for the Fastq provider
+// Make a configuration for the Fastq provider, and make initial assessment of
+// the available ENA download methods
 
 process configure_download {
+    
+    conda "${baseDir}/envs/atlas-fastq-provider.yml"
+    
     output:
         file('download_config.sh') into DOWNLOAD_CONFIG
 
@@ -50,6 +54,8 @@ process configure_download {
             if [ -n "$sshUser" ]; then
                 echo ENA_SSH_USER='${params.enaSshUser}' >> download_config.sh
             fi
+
+            initialiseEnaProbe.sh -c download_config.sh 
         """
 }
 
