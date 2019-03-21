@@ -65,7 +65,7 @@ process download_fastqs {
     
     conda "${baseDir}/envs/atlas-fastq-provider.yml"
     
-    maxForks 12
+    maxForks 50
 
     errorStrategy { task.attempt<=10 ? 'retry' : 'finish' } 
     
