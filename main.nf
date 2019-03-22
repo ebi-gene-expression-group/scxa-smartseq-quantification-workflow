@@ -30,11 +30,14 @@ FASTQ_RUNS1
 REFERENCE_FASTA = Channel.fromPath( referenceFasta, checkIfExists: true )
 
 // Make a configuration for the Fastq provider, and make initial assessment of
-// the available ENA download methods
+// the available ENA download methods. We'll cache this permanently so as not
+// to re-do on subsequent retries, thereby triggering complete re-download
 
 process configure_download {
     
     conda "${baseDir}/envs/atlas-fastq-provider.yml"
+        
+    storeDir "$SCXA_RESULTS/"
     
     output:
         file('download_config.sh') into DOWNLOAD_CONFIG
