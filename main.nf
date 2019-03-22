@@ -53,7 +53,7 @@ process configure_download {
             echo ENA_RETRIES='${params.downloadRetries}' > download_config.sh
             echo FETCH_FREQ_MILLIS='${params.fetchFreqMillis}' >> download_config.sh
             echo FASTQ_PROVIDER_TEMPDIR='$NXF_TEMP/atlas-fastq-provider' >> download_config.sh
-            echo ALLOWED_DOWNLOAD_METHODS='${params.allowedDownloadMethods}'
+            echo ALLOWED_DOWNLOAD_METHODS='${params.allowedDownloadMethods}' >> download_config.sh
 
             if [ -n "$sshUser" ]; then
                 echo ENA_SSH_USER='${params.enaSshUser}' >> download_config.sh
