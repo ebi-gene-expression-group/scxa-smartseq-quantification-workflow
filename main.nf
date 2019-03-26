@@ -4,6 +4,10 @@ sdrfFile = params.sdrf
 resultsRoot = params.resultsRoot
 referenceFasta = params.referenceFasta
 contaminationIndex = params.contaminationIndex
+downloadConfig = ''
+if ( params.containsKey('downloadConfig')){
+    downloadConfig = params.downloadConfig
+}
 
 // Read ENA_RUN column from an SDRF
 
@@ -29,41 +33,6 @@ FASTQ_RUNS1
 
 REFERENCE_FASTA = Channel.fromPath( referenceFasta, checkIfExists: true )
 
-// Make a configuration for the Fastq provider, and make initial assessment of
-// the available ENA download methods. We'll cache this permanently so as not
-// to re-do on subsequent retries, thereby triggering complete re-download
-
-process configure_download {
-    
-    conda "${baseDir}/envs/atlas-fastq-provider.yml"
-        
-    storeDir "$SCXA_RESULTS/"
-    
-    output:
-        file('atlas_fastq_provider_config.sh') into DOWNLOAD_CONFIG
-
-    script:
-        downloadConfig = file('atlas_fastq_provider_config.sh')
-        sshUser=''
-        if (params.containsKey('enaSshUser')){
-            sshUser=params.enaSshUser
-        }      
-
-        """
-            echo ENA_RETRIES=\\'${params.downloadRetries}\\' > download_config.sh
-            echo FETCH_FREQ_MILLIS=\\'${params.fetchFreqMillis}\\' >> download_config.sh
-            echo FASTQ_PROVIDER_TEMPDIR=\\'$NXF_TEMP/atlas-fastq-provider\\' >> download_config.sh
-            echo ALLOWED_DOWNLOAD_METHODS=\\'${params.allowedDownloadMethods}\\' >> download_config.sh
-
-            if [ -n "$sshUser" ]; then
-                echo ENA_SSH_USER=\\'${params.enaSshUser}\\' >> download_config.sh
-            fi
-
-            initialiseEnaProbe.sh -c download_config.sh
-            cp download_config.sh atlas_fastq_provider_config.sh 
-        """
-}
-
 // Get the file names from the URLs
 
 process get_download_filename {
@@ -81,7 +50,6 @@ process get_download_filename {
     """
 }
 
-
 // Call the download script to retrieve run fastqs
 
 process download_fastqs {
@@ -95,13 +63,16 @@ process download_fastqs {
     
     input:
         set runId, runURI, runFastq from FASTQ_RUNS_FILES
-        file(downloadConfig) from DOWNLOAD_CONFIG  
 
     output:
         set val(runId), file("${runFastq}") into DOWNLOADED_FASTQS
 
     """
-        fetchFastq.sh -f ${runURI} -t ${runFastq} -m auto -c ${downloadConfig}
+        confPart=''
+        if [ -n "$downloadConfig" ]; then
+            confPart=" -c ${downloadConfig}"
+        fi 
+        fetchFastq.sh -f ${runURI} -t ${runFastq} -m auto \$confPart
     """
 }
 
