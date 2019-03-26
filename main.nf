@@ -37,7 +37,7 @@ process configure_download {
     
     conda "${baseDir}/envs/atlas-fastq-provider.yml"
         
-    storeDir "$resultsRoot/"
+    storeDir "$SCXA_RESULTS/"
     
     output:
         file('download_config.sh') into DOWNLOAD_CONFIG
