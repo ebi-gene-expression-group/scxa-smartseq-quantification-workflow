@@ -64,6 +64,24 @@ process configure_download {
         """
 }
 
+// Get the file names from the URLs
+
+process get_download_filename {
+    
+    executor 'local'
+
+    input:
+        set runId, runFastq from FASTQ_RUNS
+    
+    output:
+        set val(runId), val(runURI), stdout into FASTQ_RUNS_FILES
+
+    """
+        basename $runFastq
+    """
+}
+
+
 // Call the download script to retrieve run fastqs
 
 process download_fastqs {
@@ -76,14 +94,14 @@ process download_fastqs {
     errorStrategy { task.attempt<=10 ? 'retry' : 'finish' } 
     
     input:
-        set runId, runFastq from FASTQ_RUNS
+        set runId, runURI, runFastq from FASTQ_RUNS_FILES
         file(downloadConfig) from DOWNLOAD_CONFIG  
 
     output:
-        set val(runId), file("${runFastq.simpleName}.fastq.gz") into DOWNLOADED_FASTQS
+        set val(runId), file("${runFastq}") into DOWNLOADED_FASTQS
 
     """
-        fetchFastq.sh -f ${runFastq} -t \$(basename ${runFastq}) -m auto -c ${downloadConfig}
+        fetchFastq.sh -f ${runURI} -t ${runFastq} -m auto -c ${downloadConfig}
     """
 }
 
