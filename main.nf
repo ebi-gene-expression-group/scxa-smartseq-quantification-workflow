@@ -71,7 +71,7 @@ process get_download_filename {
     executor 'local'
 
     input:
-        set runId, runFastq from FASTQ_RUNS
+        set runId, runURI from FASTQ_RUNS
     
     output:
         set val(runId), val(runURI), stdout into FASTQ_RUNS_FILES
