@@ -40,7 +40,7 @@ process configure_download {
     storeDir "$SCXA_RESULTS/"
     
     output:
-        file('download_config.sh') into DOWNLOAD_CONFIG
+        file('atlas_fastq_provider_config.sh') into DOWNLOAD_CONFIG
 
     script:
         downloadConfig = file('atlas_fastq_provider_config.sh')
