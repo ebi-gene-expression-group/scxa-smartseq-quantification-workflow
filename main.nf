@@ -77,7 +77,7 @@ process get_download_filename {
         set val(runId), val(runURI), stdout into FASTQ_RUNS_FILES
 
     """
-        basename $runFastq
+        basename $runURI
     """
 }
 
