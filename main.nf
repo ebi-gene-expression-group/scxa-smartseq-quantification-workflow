@@ -80,23 +80,12 @@ process download_fastqs {
         file(downloadConfig) from DOWNLOAD_CONFIG  
 
     output:
-        set val(runId), file("${runId}_1.fastq.gz") optional true into DOWNLOADED_FASTQS_R1
-        set val(runId), file("${runId}_2.fastq.gz") optional true into DOWNLOADED_FASTQS_R2
-        set val(runId), file("${runId}.fastq.gz") optional true into DOWNLOADED_FASTQS_UNPAIRED
+        set val(runId), file("${runFastq.simpleName}.fastq.gz") into DOWNLOADED_FASTQS
 
     """
         fetchFastq.sh -f ${runFastq} -t \$(basename ${runFastq}) -m auto -c ${downloadConfig}
     """
 }
-
-// Merge paired and unpaired FASTQS for processing
-
-DOWNLOADED_FASTQS_UNPAIRED
-    .concat(DOWNLOADED_FASTQS_R1)
-    .concat(DOWNLOADED_FASTQS_R2)
-    .set {
-        DOWNLOADED_FASTQS
-    }
 
 // Copy channels to allow different operations
 
