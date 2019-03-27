@@ -4,10 +4,6 @@ sdrfFile = params.sdrf
 resultsRoot = params.resultsRoot
 referenceFasta = params.referenceFasta
 contaminationIndex = params.contaminationIndex
-downloadConfig = ''
-if ( params.containsKey('downloadConfig')){
-    downloadConfig = params.downloadConfig
-}
 
 // Read ENA_RUN column from an SDRF
 
@@ -69,8 +65,8 @@ process download_fastqs {
 
     """
         confPart=''
-        if [ -n "$downloadConfig" ]; then
-            confPart=" -c ${downloadConfig}"
+        if [ -e "$NXF_TEMP/atlas-fastq-provider/download_config.sh" ]; then
+            confPart=" -c $NXF_TEMP/atlas-fastq-provider/download_config.sh"
         fi 
         fetchFastq.sh -f ${runURI} -t ${runFastq} -m auto \$confPart
     """
