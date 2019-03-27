@@ -68,7 +68,7 @@ process download_fastqs {
         if [ -e "$NXF_TEMP/atlas-fastq-provider/download_config.sh" ]; then
             confPart=" -c $NXF_TEMP/atlas-fastq-provider/download_config.sh"
         fi 
-        fetchFastq.sh -f ${runURI} -t ${runFastq} -m auto \$confPart
+        fetchFastq.sh -f ${runURI} -t ${runFastq} -m ${params.downloadMethod} \$confPart
     """
 }
 
