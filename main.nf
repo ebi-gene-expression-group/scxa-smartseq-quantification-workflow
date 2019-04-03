@@ -465,7 +465,7 @@ PAIRED = Channel.create()
 UNPAIRED = Channel.create()
 
 FINAL_VALIDATED_GROUPED_FASTQS.choice( UNPAIRED, PAIRED ) {a -> 
-    a[2] == 'PAIRED'
+    a[2] == 'PAIRED' ? 1 : 0
 }
 
 // Synchronise paired-end read files 
