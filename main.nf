@@ -15,17 +15,12 @@ Channel
         SDRF_FOR_FASTQS
         SDRF_FOR_STRAND
         SDRF_FOR_TECHREP
+        SDRF_FOR_COUNT
     }
 
 SDRF_FOR_FASTQS
     .map{ row-> tuple(row["${params.fields.run}"], row["${params.fields.fastq}"]) }
-    .set { FASTQ_RUNS1 }
-
-FASTQ_RUNS1
-    .into { 
-        PRINT_FASTQ_RUNS 
-        FASTQ_RUNS
-    }
+    .set { FASTQ_RUNS }
 
 REFERENCE_FASTA = Channel.fromPath( referenceFasta, checkIfExists: true )
 
@@ -55,7 +50,7 @@ process download_fastqs {
     maxForks params.maxConcurrentDownloads
     time { 1.hour * task.attempt }
 
-    errorStrategy { task.attempt<=10 ? 'retry' : 'finish' } 
+    errorStrategy { task.attempt<=10 ? 'retry' : 'ignore' } 
     
     input:
         set runId, runURI, runFastq from FASTQ_RUNS_FILES
@@ -86,7 +81,7 @@ process raw_fastqc {
    
     conda "${baseDir}/envs/fastqc.yml"
    
-    errorStrategy { task.attempt<=10 ? 'retry' : 'finish' } 
+    errorStrategy { task.attempt<=10 ? 'retry' : 'ignore' } 
     memory { 2.GB * task.attempt }
  
     publishDir "$resultsRoot/qc/fastqc/raw", mode: 'copy', overwrite: true
@@ -107,7 +102,7 @@ process quality_filter {
     
     conda "${baseDir}/envs/fastx_toolkit.yml"
 
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
+    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
     
     input:
         set val(runId), file(runFastq) from DOWNLOADED_FASTQS_FILTERING
@@ -129,7 +124,7 @@ process quality_trim {
     
     conda "${baseDir}/envs/fastx_toolkit.yml"
     
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
+    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
 
     input:
         set val(runId), file(runFastq) from QFILT_FASTQS
@@ -151,7 +146,7 @@ process quality_polya {
 
     conda "${baseDir}/envs/fastq_utils.yml"
     
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
+    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
     
     input:
         set val(runId), file(runFastq) from QTRIM_FASTQS
@@ -173,7 +168,7 @@ process quality_artifacts {
     
     conda "${baseDir}/envs/fastx_toolkit.yml"
     
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
+    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
     
     input:
         set val(runId), file(runFastq) from POLYATRIM_FASTQS
@@ -203,7 +198,7 @@ process quality_contamination {
     time { 3.hour * task.attempt }
     cpus 8
 
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'ignore' }
     maxRetries 20
 
     input:
@@ -233,7 +228,7 @@ process quality_uncalled {
     
     conda "${baseDir}/envs/fastq_utils.yml"
 
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
+    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
     
     input:
         set val(runId), file(runFastq) from CONT_FASTQS_UNCALLED
@@ -261,7 +256,7 @@ process filtered_fastqc {
    
     conda "${baseDir}/envs/fastqc.yml"
  
-    errorStrategy { task.attempt<=10 ? 'retry' : 'finish' } 
+    errorStrategy { task.attempt<=10 ? 'retry' : 'ignore' } 
     memory { 2.GB * task.attempt }
 
     publishDir "$resultsRoot/qc/fastqc/filtered", mode: 'copy', overwrite: true
@@ -282,7 +277,7 @@ process filtered_fastqc_tsv {
    
     conda 'irap-components'
 
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
+    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
     
     publishDir "$resultsRoot/qc/fastqc/filtered", mode: 'copy', overwrite: true
     
@@ -326,7 +321,7 @@ process count_reads {
     
     conda 'irap-components'
 
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
+    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
     
     input:
         set val(fileName), file(runFastq), file('art.fastq.gz'), file('cont.fastq.gz'), file('filt.fastq.gz') from FASTQS_FOR_COUNTING_BY_FILENAME    
@@ -366,18 +361,18 @@ process head_counts {
 // Group read files by run name with strandedness
 
 SDRF_FOR_STRAND
-    .map{ row-> tuple(row["${params.fields.run}"], params.fields.containsKey('strand') && row.containsKey(params.fields.strand) ? row["${params.fields.strand}"] : 'not applicable') }
+    .map{ row-> tuple(row["${params.fields.run}"], params.fields.containsKey('strand') && row.containsKey(params.fields.strand) ? row["${params.fields.strand}"] : 'not applicable', row["${params.fields.layout}"]) }
     .set {
-        RUN_STRANDEDNESS
+        RUN_META
     }
 
 FILTERED_FASTQS_QUANT
     .groupTuple(sort: true)
     .set{ GROUPED_FILTERED_FASTQS }
 
-// Note: following the below these tuples will now be: <run id> <strandedness> <fastq files>
+// Note: following the below these tuples will now be: <run id> <strandedness> <layout> <fastq files>
 
-RUN_STRANDEDNESS.join( GROUPED_FILTERED_FASTQS ).set { GROUPED_FILTERED_FASTQS_WITH_STRAND }
+RUN_META.join( GROUPED_FILTERED_FASTQS ).set { GROUPED_FILTERED_FASTQS_WITH_META }
 
 // Group read files by run name, or by technical replicate group if specified
 
@@ -391,14 +386,22 @@ if ( params.fields.containsKey('techrep')){
         .map{ row-> tuple( row[0], row[1][0]) }
         .set{ TECHREPS }
 
+    // The target set of results will now be the technical replicate group number
+
+    SDRF_FOR_COUNT
+        .map{ row-> tuple(row["${params.fields.techrep}"]) }
+        .unique()
+        .count()
+        .set { TARGET_RESULT_COUNT }
+    
     // Now add the tech rep group to the run info, group by it, and create a
     // tuple of files keyed by techrep group
 
-    TECHREPS.join( GROUPED_FILTERED_FASTQS_WITH_STRAND )
+    TECHREPS.join( GROUPED_FILTERED_FASTQS_WITH_META )
         .groupTuple(by: 1)
-        .map{ row-> tuple( row[1], row[2][0], row[3].flatten()) }
+        .map{ row-> tuple( row[1], row[2][0], row[3][0], row[4].flatten()) }
         .set{
-            TECHREP_GROUPED_FILTERED_FASTQS_WITH_STRAND
+            TECHREP_GROUPED_FILTERED_FASTQS_WITH_META
         }
 
     // Now collapse all of the FASTQs prior to quantification
@@ -406,10 +409,10 @@ if ( params.fields.containsKey('techrep')){
     process merge_techrep_fastqs {
 
         input:
-            set val(groupId), val(strand), file('*') from TECHREP_GROUPED_FILTERED_FASTQS_WITH_STRAND
+            set val(groupId), val(strand), val(layout), file('*') from TECHREP_GROUPED_FILTERED_FASTQS_WITH_META
         
         output:
-            set val(groupId), val(strand), file("${groupId}*.fastq.gz") into FINAL_GROUPED_FASTQS
+            set val(groupId), val(strand), val(layout), file("${groupId}*.fastq.gz") into FINAL_GROUPED_FASTQS
 
         """
             cat *_1.fastq.gz 2>/dev/null > ${groupId}_1.fastq.gz || :
@@ -419,7 +422,38 @@ if ( params.fields.containsKey('techrep')){
         """
     } 
 }else{
-    GROUPED_FILTERED_FASTQS_WITH_STRAND.set{ FINAL_GROUPED_FASTQS }
+    GROUPED_FILTERED_FASTQS_WITH_META.set{ FINAL_GROUPED_FASTQS }
+
+    SDRF_FOR_COUNT
+        .map{ row-> tuple(row["${params.fields.run}"]) }
+        .unique()
+        .count()
+        .set { TARGET_RESULT_COUNT }
+}
+
+// Validate the number of read files by layout
+
+process validate_layout {
+
+    errorStrategy 'ignore'
+
+    input:
+       set val(groupId), val(strand), val(layout), file('*') from FINAL_GROUPED_FASTQS 
+
+    output:
+       set val(groupId), val(strand), val(layout), file('*') into FINAL_VALIDATED_GROUPED_FASTQS 
+
+    """
+        if [ "$layout" -eq 'PAIRED' ]; then
+            if [ ! -e "${runId}_1.fastq.gz" ] || [ ! -e "${runId}_2.fastq.gz" ]; then
+                echo "One or more paired end read files not found for ${runId}" 1>&2
+                exit 1
+            fi
+        elif [ ! -e "${runId}.fastq.gz" ]; then
+            echo "Single-end read file not found for ${runId}"        
+            exit 1
+        fi  
+    """
 }
 
 // Separate paired and unpaired runs
@@ -427,8 +461,8 @@ if ( params.fields.containsKey('techrep')){
 PAIRED = Channel.create()
 UNPAIRED = Channel.create()
 
-FINAL_GROUPED_FASTQS.choice( UNPAIRED, PAIRED ) {a -> 
-    a[2].size() == 2 ? 1 : 0
+FINAL_VALIDATED_GROUPED_FASTQS.choice( UNPAIRED, PAIRED ) {a -> 
+    a[2] == 'PAIRED'
 }
 
 // Synchronise paired-end read files 
@@ -439,11 +473,11 @@ process synchronise_pairs {
   
     memory { 5.GB * task.attempt }
 
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'ignore' }
     maxRetries 3
     
     input:
-        set val(runId), val(strand), file('*') from PAIRED
+        set val(runId), val(strand), val(layout), file('*') from PAIRED
 
     output:
         set val(runId), val(strand), file( "matched/${runId}_1.fastq.gz" ), file("matched/${runId}_2.fastq.gz") into MATCHED_PAIRED_FASTQS
@@ -469,7 +503,7 @@ process kallisto_index {
     time { 3.hour * task.attempt }
     cpus 8
 
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'ignore' }
     maxRetries 20
     
     input:
@@ -501,12 +535,12 @@ process kallisto_single {
     memory { 4.GB * task.attempt }
     time { 3.hour * task.attempt }
     cpus 8
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'ignore' }
     maxRetries 20
 
     input:
         file(kallistoIndex) from KALLISTO_INDEX_SINGLE.first()
-        set val(runId), val(strand), file(runFastq) from UNPAIRED
+        set val(runId), val(strand), val(layout), file(runFastq) from UNPAIRED
 
     output:
         file "${runId}" into KALLISTO_SINGLE
@@ -539,7 +573,7 @@ process kallisto_paired {
     memory { 4.GB * task.attempt }
     time { 3.hour * task.attempt }
     cpus 8
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'ignore' }
     maxRetries 20
 
     input:
@@ -563,4 +597,33 @@ process kallisto_paired {
             kallisto quant ${strandedness} -i ${kallistoIndex} -t ${task.cpus} -o ${runId} ${read1} ${read2}          
         """
 }
+
+// Check the total number of runs we have 
+
+KALLISTO_SINGLE
+    .concat(KALLISTO_PAIRED)
+    .count()
+    .set{ KALLISTO_RESULTS_COUNT } 
+
+process validate_results {
+    
+    executor 'local'
+    
+    input:
+        val(kallistoResultCount) from KALLISTO_RESULTS_COUNT 
+        val(targetCount) from TARGET_RESULT_COUNT
+
+    output:
+        stdout DONE
+
+    """
+    if [ "$kallistoResultCount" -ne "$targetCount" ]; then
+        echo "Kallisto results count of $kallistoResultCount does not match expected results number ($targetCount)" 1>&2
+        exit 1
+    else
+        echo "Kallisto results count of $kallistoResultCount matches expected results number ($targetCount)"
+    fi
+    """
+}   
+
 
