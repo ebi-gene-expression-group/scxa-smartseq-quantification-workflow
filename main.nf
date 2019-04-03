@@ -438,10 +438,10 @@ process validate_layout {
     errorStrategy 'ignore'
 
     input:
-       set val(groupId), val(strand), val(layout), file('*') from FINAL_GROUPED_FASTQS 
+       set val(runId), val(strand), val(layout), file('*') from FINAL_GROUPED_FASTQS 
 
     output:
-       set val(groupId), val(strand), val(layout), file('*') into FINAL_VALIDATED_GROUPED_FASTQS 
+       set val(runId), val(strand), val(layout), file('*') into FINAL_VALIDATED_GROUPED_FASTQS 
 
     """
         if [ "$layout" -eq 'PAIRED' ]; then
