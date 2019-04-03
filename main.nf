@@ -441,7 +441,7 @@ process validate_layout {
        set val(runId), val(strand), val(layout), file('*') from FINAL_GROUPED_FASTQS 
 
     output:
-       set val(runId), val(strand), val(layout), file('*.fastq.gz') into FINAL_VALIDATED_GROUPED_FASTQS 
+       set val(runId), val(strand), val(layout), file('validated/*.fastq.gz') into FINAL_VALIDATED_GROUPED_FASTQS 
 
     """
         if [ "$layout" == 'PAIRED' ]; then
@@ -452,6 +452,9 @@ process validate_layout {
         elif [ ! -e "${runId}.fastq.gz" ]; then
             echo "Single-end read file not found for ${runId}"        
             exit 1
+        else
+            mkdir -p validated
+            cp -P *.fastq.gz validated
         fi  
     """
 }
