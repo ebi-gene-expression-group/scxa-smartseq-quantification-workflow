@@ -441,7 +441,7 @@ process validate_layout {
        set val(runId), val(strand), val(layout), file('*') from FINAL_GROUPED_FASTQS 
 
     output:
-       set val(runId), val(strand), val(layout), file('*') into FINAL_VALIDATED_GROUPED_FASTQS 
+       set val(runId), val(strand), val(layout), file('*.fastq.gz') into FINAL_VALIDATED_GROUPED_FASTQS 
 
     """
         if [ "$layout" == 'PAIRED' ]; then
