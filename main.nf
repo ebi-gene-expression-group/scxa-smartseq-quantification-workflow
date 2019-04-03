@@ -444,7 +444,7 @@ process validate_layout {
        set val(runId), val(strand), val(layout), file('*') into FINAL_VALIDATED_GROUPED_FASTQS 
 
     """
-        if [ "$layout" -eq 'PAIRED' ]; then
+        if [ "$layout" == 'PAIRED' ]; then
             if [ ! -e "${runId}_1.fastq.gz" ] || [ ! -e "${runId}_2.fastq.gz" ]; then
                 echo "One or more paired end read files not found for ${runId}" 1>&2
                 exit 1
