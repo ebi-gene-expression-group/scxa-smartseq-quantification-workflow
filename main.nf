@@ -452,10 +452,10 @@ process validate_layout {
         elif [ ! -e "${runId}.fastq.gz" ]; then
             echo "Single-end read file not found for ${runId}"        
             exit 1
-        else
-            mkdir -p validated
-            cp -P *.fastq.gz validated
         fi  
+        
+        mkdir -p validated
+        cp -P *.fastq.gz validated
     """
 }
 
