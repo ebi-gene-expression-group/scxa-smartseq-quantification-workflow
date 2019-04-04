@@ -494,7 +494,6 @@ process synchronise_pairs {
 
         fastq_pair ${runId}_1.fastq ${runId}_2.fastq
 
-        mkdir -p matched unmatched
         gzip ${runId}_1.fastq.single.fq && mv ${runId}_1.fastq.single.fq.gz unmatched/${runId}_1.fastq.gz
         gzip ${runId}_2.fastq.single.fq && mv ${runId}_2.fastq.single.fq.gz unmatched/${runId}_2.fastq.gz
         gzip ${runId}_1.fastq.paired.fq && mv ${runId}_1.fastq.paired.fq.gz matched/${runId}_1.fastq.gz
