@@ -50,8 +50,8 @@ process download_fastqs {
     maxForks params.maxConcurrentDownloads
     time { 1.hour * task.attempt }
 
-    errorStrategy { task.attempt<=10 ? 'retry' : 'ignore' } 
-    
+    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }   
+ 
     input:
         set runId, runURI, runFastq from FASTQ_RUNS_FILES
 
@@ -81,7 +81,7 @@ process raw_fastqc {
    
     conda "${baseDir}/envs/fastqc.yml"
    
-    errorStrategy { task.attempt<=10 ? 'retry' : 'ignore' } 
+    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }   
     memory { 2.GB * task.attempt }
  
     publishDir "$resultsRoot/qc/fastqc/raw", mode: 'copy', overwrite: true
@@ -102,7 +102,7 @@ process quality_filter {
     
     conda "${baseDir}/envs/fastx_toolkit.yml"
 
-    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
+    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }   
     
     input:
         set val(runId), file(runFastq) from DOWNLOADED_FASTQS_FILTERING
@@ -124,7 +124,7 @@ process quality_trim {
     
     conda "${baseDir}/envs/fastx_toolkit.yml"
     
-    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
+    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }   
 
     input:
         set val(runId), file(runFastq) from QFILT_FASTQS
@@ -146,7 +146,7 @@ process quality_polya {
 
     conda "${baseDir}/envs/fastq_utils.yml"
     
-    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
+    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }   
     
     input:
         set val(runId), file(runFastq) from QTRIM_FASTQS
@@ -168,7 +168,7 @@ process quality_artifacts {
     
     conda "${baseDir}/envs/fastx_toolkit.yml"
     
-    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
+    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }   
     
     input:
         set val(runId), file(runFastq) from POLYATRIM_FASTQS
@@ -228,8 +228,8 @@ process quality_uncalled {
     
     conda "${baseDir}/envs/fastq_utils.yml"
 
-    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
-    
+    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }    
+
     input:
         set val(runId), file(runFastq) from CONT_FASTQS_UNCALLED
     output:
@@ -256,7 +256,7 @@ process filtered_fastqc {
    
     conda "${baseDir}/envs/fastqc.yml"
  
-    errorStrategy { task.attempt<=10 ? 'retry' : 'ignore' } 
+    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }    
     memory { 2.GB * task.attempt }
 
     publishDir "$resultsRoot/qc/fastqc/filtered", mode: 'copy', overwrite: true
@@ -277,7 +277,7 @@ process filtered_fastqc_tsv {
    
     conda 'irap-components'
 
-    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
+    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }
     
     publishDir "$resultsRoot/qc/fastqc/filtered", mode: 'copy', overwrite: true
     
@@ -321,7 +321,7 @@ process count_reads {
     
     conda 'irap-components'
 
-    errorStrategy { task.attempt<=3 ? 'retry' : 'ignore' } 
+    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }
     
     input:
         set val(fileName), file(runFastq), file('art.fastq.gz'), file('cont.fastq.gz'), file('filt.fastq.gz') from FASTQS_FOR_COUNTING_BY_FILENAME    
