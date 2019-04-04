@@ -472,7 +472,7 @@ FINAL_VALIDATED_GROUPED_FASTQS.choice( UNPAIRED, PAIRED ) {a ->
 
 process synchronise_pairs {
   
-    conda "${baseDir}/envs/fastq_utils.yml"
+    conda "${baseDir}/envs/fastq_pair.yml"
   
     memory { 5.GB * task.attempt }
 
@@ -484,12 +484,23 @@ process synchronise_pairs {
 
     output:
         set val(runId), val(strand), file( "matched/${runId}_1.fastq.gz" ), file("matched/${runId}_2.fastq.gz") into MATCHED_PAIRED_FASTQS
-        set val(runId), val(strand), file( "unmatched/${runId}.fastq.gz" ) into UNMATCHED_PAIRED_FASTQS
+        set val(runId), val(strand), file( "unmatched/${runId}_1.fastq.gz" ), file( "unmatched/${runId}_2.fastq.gz" ) into UNMATCHED_PAIRED_FASTQS
 
     beforeScript 'mkdir -p matched && mkdir -p unmatched'
 
     """
-        fastq_filterpair ${runId}_1.fastq.gz ${runId}_2.fastq.gz matched/${runId}_1.fastq.gz matched/${runId}_2.fastq.gz unmatched/${runId}.fastq.gz sorted 
+        zcat ${runId}_1.fastq.gz > ${runId}_1.fastq
+        zcat ${runId}_2.fastq.gz > ${runId}_2.fastq
+
+        fastq_pair ${runId}_1.fastq ${runId}_2.fastq
+
+        mkdir -p matched unmatched
+        gzip ${runId}_1.fastq.single.fq && mv ${runId}_1.fastq.single.fq.gz unmatched/${runId}_1.fastq.gz
+        gzip ${runId}_2.fastq.single.fq && mv ${runId}_2.fastq.single.fq.gz unmatched/${runId}_2.fastq.gz
+        gzip ${runId}_1.fastq.paired.fq && mv ${runId}_1.fastq.paired.fq.gz matched/${runId}_1.fastq.gz
+        gzip ${runId}_2.fastq.paired.fq && mv ${runId}_2.fastq.paired.fq.gz matched/${runId}_2.fastq.gz
+
+        rm -f ${runId}_1.fastq ${runId}_2.fastq
     """          
 }
 
