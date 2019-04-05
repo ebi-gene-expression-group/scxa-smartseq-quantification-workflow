@@ -50,7 +50,8 @@ process download_fastqs {
     maxForks params.maxConcurrentDownloads
     time { 1.hour * task.attempt }
 
-    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }   
+    errorStrategy { task.attempt < 3 ? 'retry' : 'ignore' }   
+    maxRetries 3
  
     input:
         set runId, runURI, runFastq from FASTQ_RUNS_FILES
@@ -81,7 +82,9 @@ process raw_fastqc {
    
     conda "${baseDir}/envs/fastqc.yml"
    
-    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }   
+    errorStrategy { task.attempt < 3 ? 'retry' : 'ignore' }   
+    maxRetries 3
+    
     memory { 2.GB * task.attempt }
  
     publishDir "$resultsRoot/qc/fastqc/raw", mode: 'copy', overwrite: true
@@ -102,7 +105,8 @@ process quality_filter {
     
     conda "${baseDir}/envs/fastx_toolkit.yml"
 
-    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }   
+    errorStrategy {  task.attempt < 3 ? 'retry' : 'ignore' }   
+    maxRetries 3
     
     input:
         set val(runId), file(runFastq) from DOWNLOADED_FASTQS_FILTERING
@@ -124,7 +128,8 @@ process quality_trim {
     
     conda "${baseDir}/envs/fastx_toolkit.yml"
     
-    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }   
+    errorStrategy { task.attempt < 3 ? 'retry' : 'ignore' }   
+    maxRetries 3
 
     input:
         set val(runId), file(runFastq) from QFILT_FASTQS
@@ -146,7 +151,8 @@ process quality_polya {
 
     conda "${baseDir}/envs/fastq_utils.yml"
     
-    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }   
+    errorStrategy { task.attempt < 3 ? 'retry' : 'ignore' }   
+    maxRetries 3
     
     input:
         set val(runId), file(runFastq) from QTRIM_FASTQS
@@ -168,7 +174,8 @@ process quality_artifacts {
     
     conda "${baseDir}/envs/fastx_toolkit.yml"
     
-    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }   
+    errorStrategy { task.attempt < 3 ? 'retry' : 'ignore' }   
+    maxRetries 3
     
     input:
         set val(runId), file(runFastq) from POLYATRIM_FASTQS
@@ -198,8 +205,8 @@ process quality_contamination {
     time { 3.hour * task.attempt }
     cpus 8
 
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'ignore' }
-    maxRetries 20
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt < 3  ? 'retry' : 'ignore' }
+    maxRetries 3
 
     input:
         set val(runId), file(runFastq) from ARTEFACTS_FASTQS_CONT
@@ -228,7 +235,8 @@ process quality_uncalled {
     
     conda "${baseDir}/envs/fastq_utils.yml"
 
-    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }    
+    errorStrategy { task.attempt < 3 ? 'retry' : 'ignore' }   
+    maxRetries 3
 
     input:
         set val(runId), file(runFastq) from CONT_FASTQS_UNCALLED
@@ -256,7 +264,8 @@ process filtered_fastqc {
    
     conda "${baseDir}/envs/fastqc.yml"
  
-    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }    
+    errorStrategy { task.attempt < 3 ? 'retry' : 'ignore' }   
+    maxRetries 3
     memory { 2.GB * task.attempt }
 
     publishDir "$resultsRoot/qc/fastqc/filtered", mode: 'copy', overwrite: true
@@ -277,7 +286,8 @@ process filtered_fastqc_tsv {
    
     conda 'irap-components'
 
-    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }
+    errorStrategy { task.attempt < 3 ? 'retry' : 'ignore' }   
+    maxRetries 3
     
     publishDir "$resultsRoot/qc/fastqc/filtered", mode: 'copy', overwrite: true
     
@@ -321,7 +331,8 @@ process count_reads {
     
     conda 'irap-components'
 
-    errorStrategy { task.attempt == 1 ? 'retry' : 'ignore' }
+    errorStrategy { task.attempt < 3 ? 'retry' : 'ignore' }   
+    maxRetries 3
     
     input:
         set val(fileName), file(runFastq), file('art.fastq.gz'), file('cont.fastq.gz'), file('filt.fastq.gz') from FASTQS_FOR_COUNTING_BY_FILENAME    
@@ -472,11 +483,11 @@ FINAL_VALIDATED_GROUPED_FASTQS.choice( UNPAIRED, PAIRED ) {a ->
 
 process synchronise_pairs {
   
-    conda "${baseDir}/envs/fastq_utils.yml"
+    conda "${baseDir}/envs/fastq_pair.yml"
   
     memory { 5.GB * task.attempt }
 
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'ignore' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt < 3 ? 'retry' : 'ignore' }
     maxRetries 3
     
     input:
@@ -484,12 +495,22 @@ process synchronise_pairs {
 
     output:
         set val(runId), val(strand), file( "matched/${runId}_1.fastq.gz" ), file("matched/${runId}_2.fastq.gz") into MATCHED_PAIRED_FASTQS
-        set val(runId), val(strand), file( "unmatched/${runId}.fastq.gz" ) into UNMATCHED_PAIRED_FASTQS
+        set val(runId), val(strand), file( "unmatched/${runId}_1.fastq.gz" ), file( "unmatched/${runId}_2.fastq.gz" ) into UNMATCHED_PAIRED_FASTQS
 
     beforeScript 'mkdir -p matched && mkdir -p unmatched'
 
     """
-        fastq_filterpair ${runId}_1.fastq.gz ${runId}_2.fastq.gz matched/${runId}_1.fastq.gz matched/${runId}_2.fastq.gz unmatched/${runId}.fastq.gz sorted 
+        zcat ${runId}_1.fastq.gz > ${runId}_1.fastq
+        zcat ${runId}_2.fastq.gz > ${runId}_2.fastq
+
+        fastq_pair ${runId}_1.fastq ${runId}_2.fastq
+
+        gzip ${runId}_1.fastq.single.fq && mv ${runId}_1.fastq.single.fq.gz unmatched/${runId}_1.fastq.gz
+        gzip ${runId}_2.fastq.single.fq && mv ${runId}_2.fastq.single.fq.gz unmatched/${runId}_2.fastq.gz
+        gzip ${runId}_1.fastq.paired.fq && mv ${runId}_1.fastq.paired.fq.gz matched/${runId}_1.fastq.gz
+        gzip ${runId}_2.fastq.paired.fq && mv ${runId}_2.fastq.paired.fq.gz matched/${runId}_2.fastq.gz
+
+        rm -f ${runId}_1.fastq ${runId}_2.fastq
     """          
 }
 
@@ -506,8 +527,8 @@ process kallisto_index {
     time { 3.hour * task.attempt }
     cpus 8
 
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'ignore' }
-    maxRetries 20
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt < 5 ? 'retry' : 'ignore' }
+    maxRetries 5
     
     input:
          file(referenceFastq) from REFERENCE_FASTA
@@ -538,8 +559,8 @@ process kallisto_single {
     memory { 4.GB * task.attempt }
     time { 3.hour * task.attempt }
     cpus 8
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'ignore' }
-    maxRetries 20
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt < 5 ? 'retry' : 'ignore' }
+    maxRetries 5
 
     input:
         file(kallistoIndex) from KALLISTO_INDEX_SINGLE.first()
@@ -576,8 +597,8 @@ process kallisto_paired {
     memory { 4.GB * task.attempt }
     time { 3.hour * task.attempt }
     cpus 8
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'ignore' }
-    maxRetries 20
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt < 5? 'retry' : 'ignore' }
+    maxRetries 5
 
     input:
         file(kallistoIndex) from KALLISTO_INDEX_PAIRED.first()

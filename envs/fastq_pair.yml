@@ -1,0 +1,3 @@
+name: fastq-pair
+dependencies:
+  - fastq-pair=1.0
