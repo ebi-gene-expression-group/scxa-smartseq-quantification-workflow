@@ -16,6 +16,7 @@ Channel
         SDRF_FOR_STRAND
         SDRF_FOR_TECHREP
         SDRF_FOR_COUNT
+        SDRF_FOR_TECHREP_COUNT
     }
 
 SDRF_FOR_FASTQS
@@ -23,6 +24,13 @@ SDRF_FOR_FASTQS
     .set { FASTQ_RUNS }
 
 REFERENCE_FASTA = Channel.fromPath( referenceFasta, checkIfExists: true )
+
+SDRF_FOR_COUNT
+    .map{ row-> tuple(row["${params.fields.run}"]) }
+    .unique()
+    .count()
+    .first()
+    .set { RUN_COUNT }
 
 // Get the file names from the URLs
 
@@ -252,11 +260,30 @@ process quality_uncalled {
 
 // Filter out near-0 sizes files. Zipped empty files seem to have a size of 20.
 
-FILTERED_FASTQS.filter{ it.get(1).size()>40 }.into {
-    FILTERED_FASTQS_COUNTS
-    FILTERED_FASTQS_QUANT
-    FILTERED_FASTQS_FASTQC
+FILTERED_FASTQS
+    .into{
+        FILTERED_FASTQS_FOR_DOWNSTREAM
+        FILTERED_FASTQS_FOR_COUNT
+    }
+
+FILTERED_FASTQS_FOR_COUNT
+    .map{ tuple(it[0]) }
+    .unique()
+    .count()
+    .set { FILTERED_FASTQ_RUN_COUNT }
+
+FILTERED_FASTQS_FOR_DOWNSTREAM.filter{ it.get(1).size()>40 }.into {
+    FILTERED_NONEMPTY_FASTQS_COUNTS
+    FILTERED_NONEMPTY_FASTQS_QUANT
+    FILTERED_NONEMPTY_FASTQS_FASTQC
+    FILTERED_NONEMPTY_FASTQS_FOR_COUNT
 }
+
+FILTERED_NONEMPTY_FASTQS_FOR_COUNT
+    .map{ tuple(it[0]) }
+    .unique()
+    .count()
+    .set { FILTERED_NONEMPTY_FASTQ_RUN_COUNT }
 
 // Run fastQC on filtered reads
 
@@ -271,7 +298,7 @@ process filtered_fastqc {
     publishDir "$resultsRoot/qc/fastqc/filtered", mode: 'copy', overwrite: true
     
     input:
-        set val(runId), file(runFastq) from FILTERED_FASTQS_FASTQC
+        set val(runId), file(runFastq) from FILTERED_NONEMPTY_FASTQS_FASTQC
     output:
         set val(runId), file("${runFastq.simpleName}_fastqc.zip") into FILTERED_FASTQC
 
@@ -315,7 +342,7 @@ DOWNLOADED_FASTQS_COUNTS
         CONT_FASTQS_COUNTS
         .map{ tuple(it[1].simpleName, it[1]) }
     )
-    .join( FILTERED_FASTQS_COUNTS.map{ tuple(it[1].simpleName, it[1]) }, remainder: true)
+    .join( FILTERED_NONEMPTY_FASTQS_COUNTS.map{ tuple(it[1].simpleName, it[1]) }, remainder: true)
     .set {
         FASTQS_FOR_COUNTING_BY_FILENAME
     }
@@ -374,7 +401,7 @@ SDRF_FOR_STRAND
         RUN_META
     }
 
-FILTERED_FASTQS_QUANT
+FILTERED_NONEMPTY_FASTQS_QUANT
     .groupTuple(sort: true)
     .set{ GROUPED_FILTERED_FASTQS }
 
@@ -400,7 +427,10 @@ if ( params.fields.containsKey('techrep')){
         .map{ row-> tuple(row["${params.fields.techrep}"]) }
         .unique()
         .count()
-        .set { TARGET_RESULT_COUNT }
+        .first()
+        .into {
+            TARGET_COUNT 
+        }
     
     // Now add the tech rep group to the run info, group by it, and create a
     // tuple of files keyed by techrep group
@@ -432,11 +462,10 @@ if ( params.fields.containsKey('techrep')){
 }else{
     GROUPED_FILTERED_FASTQS_WITH_META.set{ FINAL_GROUPED_FASTQS }
 
-    SDRF_FOR_COUNT
-        .map{ row-> tuple(row["${params.fields.run}"]) }
-        .unique()
-        .count()
-        .set { TARGET_RESULT_COUNT }
+    RUN_COUNT
+        .set{
+            TARGET_COUNT
+        }
 }
 
 // Validate the number of read files by layout
@@ -634,7 +663,10 @@ process validate_results {
     
     input:
         val(kallistoResultCount) from KALLISTO_RESULTS_COUNT 
+        val(runCount) from RUN_COUNT
         val(targetCount) from TARGET_RESULT_COUNT
+        val(filteredFastqRunCount) from FILTERED_FASTQ_RUN_COUNT
+        val(filteredNonemptyFastqRunCount) from FILTERED_NONEMPTY_FASTQ_RUN_COUNT
         file(finalCounts) from FINAL_COUNTS
 
     output:
@@ -642,8 +674,19 @@ process validate_results {
 
     """
     if [ "$kallistoResultCount" -ne "$targetCount" ]; then
+        
         echo "Kallisto results count of $kallistoResultCount does not match expected results number ($targetCount)" 1>&2
-        exit 1
+
+        if [ "$filteredFastqRunCount" -ne "$runCount" ]; then
+            echo "... filtering failed" 1>&2
+            exit 1
+        elif [ "$filteredNonemptyFastqRunCount" -ne "$filteredFastqRunCount" ]; then
+            echo "... this is just because filtering removed some runs" 1>&2
+            exit 0
+        else
+            echo "... unrecoverable errors may have occurred at quantification" 1>&2
+            exit 1 
+        fi
     else
         echo "Kallisto results count of $kallistoResultCount matches expected results number ($targetCount)"
     fi
