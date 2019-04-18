@@ -630,6 +630,8 @@ process validate_results {
     
     executor 'local'
     
+    errorStrategy 'finish'  
+    
     input:
         val(kallistoResultCount) from KALLISTO_RESULTS_COUNT 
         val(targetCount) from TARGET_RESULT_COUNT
