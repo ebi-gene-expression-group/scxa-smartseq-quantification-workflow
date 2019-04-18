@@ -357,7 +357,7 @@ process head_counts {
        file(mergedCounts) from MERGED_FASTQ_COUNTS
 
     output:
-       file('fastq_counts.csv')
+       file('fastq_counts.csv') into FINAL_COUNTS
 
     """
         echo "name,raw,artefacts_removed,contamination_filtered,uncalled_filtered" > fastq_counts.csv
@@ -635,6 +635,7 @@ process validate_results {
     input:
         val(kallistoResultCount) from KALLISTO_RESULTS_COUNT 
         val(targetCount) from TARGET_RESULT_COUNT
+        file(finalCounts) from FINAL_COUNTS
 
     output:
         stdout DONE
