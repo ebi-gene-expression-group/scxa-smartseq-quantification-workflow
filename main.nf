@@ -315,10 +315,7 @@ DOWNLOADED_FASTQS_COUNTS
         CONT_FASTQS_COUNTS
         .map{ tuple(it[1].simpleName, it[1]) }
     )
-    .join( 
-        FILTERED_FASTQS_COUNTS
-        .map{ tuple(it[1].simpleName, it[1]) }
-    )
+    .join( FILTERED_FASTQS_COUNTS.map{ tuple(it[1].simpleName, it[1]) }, remainder: true)
     .set {
         FASTQS_FOR_COUNTING_BY_FILENAME
     }
