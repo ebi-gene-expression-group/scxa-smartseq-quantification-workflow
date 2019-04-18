@@ -426,7 +426,7 @@ if ( params.fields.containsKey('techrep')){
         .map{ row-> tuple(row["${params.fields.techrep}"]) }
         .unique()
         .count()
-        .into {
+        .set {
             TARGET_COUNT 
         }
     
@@ -662,7 +662,7 @@ process validate_results {
     input:
         val(kallistoResultCount) from KALLISTO_RESULTS_COUNT 
         val(runCount) from RUN_COUNT
-        val(targetCount) from TARGET_RESULT_COUNT
+        val(targetCount) from TARGET_COUNT
         val(filteredFastqRunCount) from FILTERED_FASTQ_RUN_COUNT
         val(filteredNonemptyFastqRunCount) from FILTERED_NONEMPTY_FASTQ_RUN_COUNT
         file(finalCounts) from FINAL_COUNTS
