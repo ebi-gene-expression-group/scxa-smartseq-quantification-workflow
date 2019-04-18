@@ -29,7 +29,6 @@ SDRF_FOR_COUNT
     .map{ row-> tuple(row["${params.fields.run}"]) }
     .unique()
     .count()
-    .first()
     .set { RUN_COUNT }
 
 // Get the file names from the URLs
@@ -427,7 +426,6 @@ if ( params.fields.containsKey('techrep')){
         .map{ row-> tuple(row["${params.fields.techrep}"]) }
         .unique()
         .count()
-        .first()
         .into {
             TARGET_COUNT 
         }
