@@ -6,7 +6,7 @@ referenceFasta = params.referenceFasta
 contaminationIndex = params.contaminationIndex
 
 manualDownloadFolder =''
-if ( params.containsKey('manualDownloadFolder'){
+if ( params.containsKey('manualDownloadFolder')){
     manualDownloadFolder = params.manualDownloadFolder
 }
 
