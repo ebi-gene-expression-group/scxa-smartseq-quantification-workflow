@@ -5,6 +5,11 @@ resultsRoot = params.resultsRoot
 referenceFasta = params.referenceFasta
 contaminationIndex = params.contaminationIndex
 
+manualDownloadFolder =''
+if ( params.containsKey('manualDownloadFolder'){
+    manualDownloadFolder = params.manualDownloadFolder
+}
+
 // Read ENA_RUN column from an SDRF
 
 Channel
@@ -67,11 +72,15 @@ process download_fastqs {
         set val(runId), file("${runFastq}") into DOWNLOADED_FASTQS
 
     """
-        confPart=''
-        if [ -e "$NXF_TEMP/atlas-fastq-provider/download_config.sh" ]; then
-            confPart=" -c $NXF_TEMP/atlas-fastq-provider/download_config.sh"
-        fi 
-        fetchFastq.sh -f ${runURI} -t ${runFastq} -m ${params.downloadMethod} \$confPart
+        if [ -n "$manualDownloadFolder" ] && [ -e $manualDownloadFolder/${runFastq} ]; then
+           ln -s $manualDownloadFolder/${runFastq} ${runFastq}
+        else
+            confPart=''
+            if [ -e "$NXF_TEMP/atlas-fastq-provider/download_config.sh" ]; then
+                confPart=" -c $NXF_TEMP/atlas-fastq-provider/download_config.sh"
+            fi 
+            fetchFastq.sh -f ${runURI} -t ${runFastq} -m ${params.downloadMethod} \$confPart
+        fi
     """
 }
 
