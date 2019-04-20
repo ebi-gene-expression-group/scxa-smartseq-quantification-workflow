@@ -424,7 +424,7 @@ if ( params.fields.containsKey('techrep')){
     // If technical replicates are present, create a channel containing that info 
 
     SDRF_FOR_TECHREP
-        .map{ row-> tuple(row["${params.fields.run}"], row["${params.fields.techrep}"]) }
+        .map{ row-> tuple(row["${params.fields.run}"], row["${params.fields.techrep}"].replaceAll(' ','_')) }
         .groupTuple()
         .map{ row-> tuple( row[0], row[1][0]) }
         .set{ TECHREPS }
