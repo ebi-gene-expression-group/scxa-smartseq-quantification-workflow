@@ -431,7 +431,7 @@ if ( params.fields.containsKey('techrep')){
 
     // The target set of results will now be the technical replicate group number
 
-    SDRF_FOR_COUNT
+    SDRF_FOR_TECHREP_COUNT
         .map{ row-> tuple(row["${params.fields.techrep}"]) }
         .unique()
         .count()
