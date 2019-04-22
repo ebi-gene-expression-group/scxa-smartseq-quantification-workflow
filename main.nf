@@ -488,18 +488,26 @@ process validate_layout {
        set val(runId), val(strand), val(layout), file('validated/*.fastq.gz') into FINAL_VALIDATED_GROUPED_FASTQS 
 
     """
-        if [ "$layout" == 'PAIRED' ]; then
-            if [ ! -e "${runId}_1.fastq.gz" ] || [ ! -e "${runId}_2.fastq.gz" ]; then
-                echo "One or more paired end read files not found for ${runId}" 1>&2
-                exit 1
-            fi
-        elif [ ! -e "${runId}.fastq.gz" ]; then
-            echo "Single-end read file not found for ${runId}"        
-            exit 1
-        fi  
-        
+        nFastqs=\$(ls *.fastq.gz | wc -l)
+        readOnes=\$(ls *_1.fastq.gz | wc -l)
+        readTwos=\$(ls *_2.fastq.gz | wc -l)                
         mkdir -p validated
-        cp -P *.fastq.gz validated
+
+        if [ "$layout" == 'PAIRED' ]; then
+            if [ "\$nFastqs" -ne 2 ] || [ "\$readOnes" -ne 1 ] || [ "\$readTwos" -ne 1 ]; then
+                echo "Got \$nFastqs FASTQ files for a ${layout}-ended library (\$readOnes read 1, \$readTwos read 2)" 1>&2
+                exit 1
+            else
+                cp -P *_1.fastq.gz validated/${runId}_1.fastq.gz
+                cp -P *_2.fastq.gz validated/${runId}_2.fastq.gz
+            fi
+
+        elif [ \$nFastqs -ne 1 ]; then
+            echo "Single single-end read file not found for ${runId}"        
+            exit 1
+        else
+            cp -P *.fastq validated/${runId}.fastq.gz
+        fi  
     """
 }
 
