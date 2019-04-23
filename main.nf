@@ -506,7 +506,7 @@ process validate_layout {
             echo "Single single-end read file not found for ${runId}" 1>&2        
             exit 1
         else
-            cp -P *.fastq validated/${runId}.fastq.gz
+            cp -P *.fastq.gz validated/${runId}.fastq.gz
         fi  
     """
 }
