@@ -479,7 +479,8 @@ if ( params.fields.containsKey('techrep')){
 
 process validate_layout {
 
-    errorStrategy 'ignore'
+    errorStrategy { task.attempt < 3 ? 'retry' : 'ignore' }   
+    maxRetries 3
 
     input:
        set val(runId), val(strand), val(layout), file('*') from FINAL_GROUPED_FASTQS 
