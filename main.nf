@@ -245,7 +245,7 @@ process quality_contamination {
 
 UNCALLED_CHECK_IN
     .mix(CONT_FASTQS)
-    into {
+    .into {
         CONT_FASTQS_UNCALLED
         CONT_FASTQS_COUNTS
         CONT_FASTQS_CHAR
