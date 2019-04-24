@@ -3,7 +3,6 @@
 sdrfFile = params.sdrf
 resultsRoot = params.resultsRoot
 referenceFasta = params.referenceFasta
-contaminationIndex = params.contaminationIndex
 
 manualDownloadFolder =''
 if ( params.containsKey('manualDownloadFolder')){
@@ -211,7 +210,12 @@ ARTEFACTS_FASTQS.into {
     ARTEFACTS_FASTQS_COUNTS
 }
 
-// Do alignments agains a contamination index and filter out matches
+// Do alignments agains a contamination index and filter out matches. If no
+// contamination index has been specified, skip this step.
+
+(CONT_CHECK_IN, UNCALLED_CHECK_IN) = ( params.containsKey('contaminationIndex')
+                 ? [ARTEFACTS_FASTQS_CONT, Channel.empty()]
+                 : [Channel.empty(), ARTEFACTS_FASTQS_CONT] )
 
 process quality_contamination {
     
@@ -225,7 +229,7 @@ process quality_contamination {
     maxRetries 3
 
     input:
-        set val(runId), file(runFastq) from ARTEFACTS_FASTQS_CONT
+        set val(runId), file(runFastq) from CONT_CHECK_IN
     output:
         set val(runId), file("contfilt/${runFastq}") into CONT_FASTQS
         set val("${runFastq.simpleName}"), file("contfilt/${runId}.cont.bam") into CONT_BAMS
@@ -234,16 +238,18 @@ process quality_contamination {
 
     """
         bowtie2 -p 8 --very-fast --un contfilt/${runFastq} --fast-local --phred33 \
-            -x $contaminationIndex -U ${runFastq} -S /dev/stdout | \
+            -x ${params.contaminationIndex} -U ${runFastq} -S /dev/stdout | \
             samtools view -S -b -F 4 - > contfilt/${runId}.cont.bam
     """
 }
 
-CONT_FASTQS.into {
-    CONT_FASTQS_UNCALLED
-    CONT_FASTQS_COUNTS
-    CONT_FASTQS_CHAR
-}
+UNCALLED_CHECK_IN
+    .mix(CONT_FASTQS)
+    into {
+        CONT_FASTQS_UNCALLED
+        CONT_FASTQS_COUNTS
+        CONT_FASTQS_CHAR
+    }
 
 // Filter uncalled bases
 
