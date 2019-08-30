@@ -24,7 +24,7 @@ Channel
     }
 
 SDRF_FOR_FASTQS
-    .map{ row-> tuple(row["${params.fields.run}"], row["${params.fields.fastq}"]) }
+    .map{ row-> tuple(row["${params.fields.run}"], row["${params.fields.fastq}"], file(row["${params.fields.fastq}"]).getName()) }
     .set { FASTQ_RUNS }
 
 REFERENCE_FASTA = Channel.fromPath( referenceFasta, checkIfExists: true )
@@ -34,23 +34,6 @@ SDRF_FOR_COUNT
     .unique()
     .count()
     .set { RUN_COUNT }
-
-// Get the file names from the URLs
-
-process get_download_filename {
-    
-    executor 'local'
-
-    input:
-        set runId, runURI from FASTQ_RUNS
-    
-    output:
-        set val(runId), val(runURI), stdout into FASTQ_RUNS_FILES
-
-    """
-        basename $runURI | tr -d \'\\n\'
-    """
-}
 
 // Call the download script to retrieve run fastqs
 
@@ -65,7 +48,7 @@ process download_fastqs {
     maxRetries 3
  
     input:
-        set runId, runURI, runFastq from FASTQ_RUNS_FILES
+        set runId, runURI, runFastq from FASTQ_RUNS
 
     output:
         set val(runId), file("${runFastq}") into DOWNLOADED_FASTQS
