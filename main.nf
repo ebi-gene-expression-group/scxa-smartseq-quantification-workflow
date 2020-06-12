@@ -9,6 +9,11 @@ if ( params.containsKey('manualDownloadFolder')){
     manualDownloadFolder = params.manualDownloadFolder
 }
 
+controlledAccess='no'
+if ( params.containsKey('controlledAccess') && params.controlledAccess == 'yes'){
+    controlledAccess='yes'
+}
+
 // Read ENA_RUN column from an SDRF
 
 Channel
@@ -56,6 +61,9 @@ process download_fastqs {
     """
         if [ -n "$manualDownloadFolder" ] && [ -e $manualDownloadFolder/${runFastq} ]; then
            ln -s $manualDownloadFolder/${runFastq} ${runFastq}
+        elif [ "$controlledAcces' = 'yes' ]; then
+            echo "$runFastq is not available at $manualDownloadFolder/${runFastq} for this controlled access experiment" 1>&2
+            exit 1
         else
             confPart=''
             if [ -e "$NXF_TEMP/atlas-fastq-provider/download_config.sh" ]; then
