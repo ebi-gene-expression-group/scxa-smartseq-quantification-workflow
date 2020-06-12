@@ -50,7 +50,7 @@ process download_fastqs {
     maxForks params.maxConcurrentDownloads
     time { 1.hour * task.attempt }
 
-    errorStrategy { task.attempt < 3 ? 'retry' : 'ignore' }   
+    errorStrategy { task.attempt < 3 && task.exitStatus != 2 ? 'retry' : 'ignore' }   
     maxRetries 3
  
     input:
@@ -64,7 +64,7 @@ process download_fastqs {
            ln -s $manualDownloadFolder/${runFastq} ${runFastq}
         elif [ "$controlledAccess" = 'yes' ]; then
             echo "$runFastq is not available at $manualDownloadFolder/${runFastq} for this controlled access experiment" 1>&2
-            exit 1
+            exit 2
         else
             confPart=''
             if [ -e "$NXF_TEMP/atlas-fastq-provider/download_config.sh" ]; then
