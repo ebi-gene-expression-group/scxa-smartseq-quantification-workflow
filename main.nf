@@ -9,11 +9,6 @@ if ( params.containsKey('manualDownloadFolder')){
     manualDownloadFolder = params.manualDownloadFolder
 }
 
-controlledAccess='no'
-if ( params.containsKey('controlledAccess') && params.controlledAccess == 'yes'){
-    controlledAccess='yes'
-}
-
 // Read ENA_RUN column from an SDRF
 
 Channel
@@ -29,7 +24,13 @@ Channel
     }
 
 SDRF_FOR_FASTQS
-    .map{ row-> tuple(row["${params.fields.run}"], row["${params.fields.fastq}"], file(row["${params.fields.fastq}"]).getName()) }
+    .map{ row-> 
+      controlled_access='no'
+      if (  params.fields.containsKey('controlled_access')){
+        controlled_access=row["${params.fields.controlled_access}"
+      }  
+      tuple(row["${params.fields.run}"], row["${params.fields.fastq}"], file(row["${params.fields.fastq}"]).getName(), controlled_access) 
+     }
     .set { FASTQ_RUNS }
 
 REFERENCE_FASTA = Channel.fromPath( referenceFasta, checkIfExists: true )
@@ -53,7 +54,7 @@ process download_fastqs {
     maxRetries 3
  
     input:
-        set runId, runURI, runFastq from FASTQ_RUNS
+        set runId, runURI, runFastq, controlledAccess from FASTQ_RUNS
 
     output:
         set val(runId), file("${runFastq}") into DOWNLOADED_FASTQS
