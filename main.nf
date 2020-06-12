@@ -27,7 +27,7 @@ SDRF_FOR_FASTQS
     .map{ row-> 
       controlled_access='no'
       if (  params.fields.containsKey('controlled_access')){
-        controlled_access=row["${params.fields.controlled_access}"
+        controlled_access=row["${params.fields.controlled_access}"]
       }  
       tuple(row["${params.fields.run}"], row["${params.fields.fastq}"], file(row["${params.fields.fastq}"]).getName(), controlled_access) 
      }
