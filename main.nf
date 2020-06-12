@@ -62,7 +62,7 @@ process download_fastqs {
     """
         if [ -n "$manualDownloadFolder" ] && [ -e $manualDownloadFolder/${runFastq} ]; then
            ln -s $manualDownloadFolder/${runFastq} ${runFastq}
-        elif [ "$controlledAccess' = 'yes' ]; then
+        elif [ "$controlledAccess" = 'yes' ]; then
             echo "$runFastq is not available at $manualDownloadFolder/${runFastq} for this controlled access experiment" 1>&2
             exit 1
         else
