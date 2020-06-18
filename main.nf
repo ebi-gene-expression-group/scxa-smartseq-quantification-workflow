@@ -24,7 +24,13 @@ Channel
     }
 
 SDRF_FOR_FASTQS
-    .map{ row-> tuple(row["${params.fields.run}"], row["${params.fields.fastq}"], file(row["${params.fields.fastq}"]).getName()) }
+    .map{ row-> 
+      controlled_access='no'
+      if (  params.fields.containsKey('controlled_access')){
+        controlled_access=row["${params.fields.controlled_access}"]
+      }  
+      tuple(row["${params.fields.run}"], row["${params.fields.fastq}"], file(row["${params.fields.fastq}"]).getName(), controlled_access) 
+     }
     .set { FASTQ_RUNS }
 
 REFERENCE_FASTA = Channel.fromPath( referenceFasta, checkIfExists: true )
@@ -44,11 +50,11 @@ process download_fastqs {
     maxForks params.maxConcurrentDownloads
     time { 1.hour * task.attempt }
 
-    errorStrategy { task.attempt < 3 ? 'retry' : 'ignore' }   
+    errorStrategy { task.attempt < 3 && task.exitStatus != 2 ? 'retry' : 'ignore' }   
     maxRetries 3
  
     input:
-        set runId, runURI, runFastq from FASTQ_RUNS
+        set runId, runURI, runFastq, controlledAccess from FASTQ_RUNS
 
     output:
         set val(runId), file("${runFastq}") into DOWNLOADED_FASTQS
@@ -56,6 +62,9 @@ process download_fastqs {
     """
         if [ -n "$manualDownloadFolder" ] && [ -e $manualDownloadFolder/${runFastq} ]; then
            ln -s $manualDownloadFolder/${runFastq} ${runFastq}
+        elif [ "$controlledAccess" = 'yes' ]; then
+            echo "$runFastq is not available at $manualDownloadFolder/${runFastq} for this controlled access experiment" 1>&2
+            exit 2
         else
             confPart=''
             if [ -e "$NXF_TEMP/atlas-fastq-provider/download_config.sh" ]; then
