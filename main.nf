@@ -2,7 +2,7 @@
 
 sdrfFile = params.sdrf
 resultsRoot = params.resultsRoot
-referenceFasta = params.referenceFasta
+transcriptomeIndex = params.transcriptomeIndex
 
 manualDownloadFolder =''
 if ( params.containsKey('manualDownloadFolder')){
@@ -32,8 +32,6 @@ SDRF_FOR_FASTQS
       tuple(row["${params.fields.run}"], row["${params.fields.fastq}"], file(row["${params.fields.fastq}"]).getName(), controlled_access) 
      }
     .set { FASTQ_RUNS }
-
-REFERENCE_FASTA = Channel.fromPath( referenceFasta, checkIfExists: true )
 
 SDRF_FOR_COUNT
     .map{ row-> tuple(row["${params.fields.run}"]) }
@@ -554,34 +552,6 @@ process synchronise_pairs {
     """          
 }
 
-// Generate a Kallisto index 
-
-process kallisto_index {
-
-    conda "${baseDir}/envs/kallisto.yml"
-
-    // Cache based on path and file size
-    cache 'deep'
-    
-    memory { 5.GB * task.attempt }
-    time { 3.hour * task.attempt }
-    cpus 8
-
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt < 5 ? 'retry' : 'ignore' }
-    maxRetries 5
-    
-    input:
-         file(referenceFastq) from REFERENCE_FASTA
-
-    output:
-        file ("${referenceFastq}.index") into KALLISTO_INDEX
-        
-    """
-        kallisto index --kmer-size ${params.kallisto.index.kmer_size} \
-            -i ${referenceFastq}.index ${referenceFastq}
-    """
-}
-
 // Re-use index for both single- and paired-end reads
 
 KALLISTO_INDEX.into{
@@ -603,7 +573,6 @@ process kallisto_single {
     maxRetries 5
 
     input:
-        file(kallistoIndex) from KALLISTO_INDEX_SINGLE.first()
         set val(runId), val(strand), val(layout), file(runFastq) from UNPAIRED
 
     output:
@@ -620,7 +589,7 @@ process kallisto_single {
         }
 
         """
-            kallisto quant $strandedness -i ${kallistoIndex} --single \
+            kallisto quant $strandedness -i ${transcriptomeIndex} --single \
                 -l ${params.kallisto.quant.se.l} -s ${params.kallisto.quant.se.s} \
                 -t ${task.cpus} -o ${runId} ${runFastq}          
         """
@@ -641,7 +610,6 @@ process kallisto_paired {
     maxRetries 5
 
     input:
-        file(kallistoIndex) from KALLISTO_INDEX_PAIRED.first()
         set val(runId), val(strand), file(read1), file(read2) from MATCHED_PAIRED_FASTQS
 
     output:
@@ -658,7 +626,7 @@ process kallisto_paired {
         }
 
         """
-            kallisto quant ${strandedness} -i ${kallistoIndex} -t ${task.cpus} -o ${runId} ${read1} ${read2}          
+            kallisto quant ${strandedness} -i ${transcriptomeIndex} -t ${task.cpus} -o ${runId} ${read1} ${read2}          
         """
 }
 
