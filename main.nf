@@ -552,14 +552,8 @@ process synchronise_pairs {
     """          
 }
 
-// Re-use index for both single- and paired-end reads
-
-KALLISTO_INDEX.into{
-    KALLISTO_INDEX_SINGLE
-    KALLISTO_INDEX_PAIRED
-}
-
 // Run Kallisto for each single- read file
+
 process kallisto_single {
 
     conda "${baseDir}/envs/kallisto.yml"
