@@ -9,6 +9,11 @@ if ( params.containsKey('manualDownloadFolder')){
     manualDownloadFolder = params.manualDownloadFolder
 }
 
+fastqProviderConfig = ''
+if ( params.containsKey('fastqProviderConfig')){
+    fastqProviderConfig = params.fastqProviderConfig
+}
+
 // Read ENA_RUN column from an SDRF
 
 Channel
@@ -65,8 +70,8 @@ process download_fastqs {
             exit 2
         else
             confPart=''
-            if [ -n "$FASTQ_PROVIDER_CONFIG" ] && [ -e "$FASTQ_PROVIDER_CONFIG" ]; then
-                confPart=" -c $FASTQ_PROVIDER_CONFIG"
+            if [ -n "$fastqProviderConfig" ] && [ -e "$fastqProviderConfig" ]; then
+                confPart=" -c $fastqProviderConfig"
             fi 
             fetchFastq.sh -f ${runURI} -t ${runFastq} -m ${params.downloadMethod} \$confPart
         fi
