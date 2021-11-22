@@ -458,13 +458,15 @@ if ( params.fields.containsKey('techrep')){
             set val(groupId), val(strand), val(layout), file('*') from TECHREP_GROUPED_FILTERED_FASTQS_WITH_META
         
         output:
-            set val(groupId), val(strand), val(layout), file("${groupId}*.fastq.gz") into FINAL_GROUPED_FASTQS
+            set val(groupId), val(strand), val(layout), file("merged/${groupId}*.fastq.gz") into FINAL_GROUPED_FASTQS
+            
+        beforeScript 'mkdir -p merged'
 
         """
-            cat *_1.fastq.gz 2>/dev/null > ${groupId}_1.fastq.gz || :
-            cat *_2.fastq.gz 2>/dev/null > ${groupId}_2.fastq.gz || :
-            find . -name '*.fastq.gz' ! -name '*_1.fastq.gz' ! -name '*_2.fastq.gz' -exec cat {} \\; > ${groupId}.fastq.gz
-            find . -empty -type f -delete 
+            find . -name '*.fastq.gz' ! -name '*_1.fastq.gz' ! -name '*_2.fastq.gz' -exec cat {} \\; > merged/${groupId}.fastq.gz
+            cat *_1.fastq.gz 2>/dev/null > merged/${groupId}_1.fastq.gz || :
+            cat *_2.fastq.gz 2>/dev/null > merged/${groupId}_2.fastq.gz || :
+            find merged -empty -type f -delete 
         """
     } 
 }else{
