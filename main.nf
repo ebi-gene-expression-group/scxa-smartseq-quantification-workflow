@@ -63,6 +63,12 @@ process download_fastqs {
         set val(runId), file("${runFastq}") into DOWNLOADED_FASTQS
 
     """
+        if ! [ -z "$ATLAS_TMPDIR" ]; then 
+            TMPDIR=$ATLAS_TMPDIR; 
+        else 
+            echo "NOTE: ATLAS_TMPDIR not defined"
+        fi
+        
         if [ -n "$manualDownloadFolder" ] && [ -e $manualDownloadFolder/${runFastq} ]; then
            ln -s $manualDownloadFolder/${runFastq} ${runFastq}
         elif [ "$controlledAccess" = 'yes' ]; then
