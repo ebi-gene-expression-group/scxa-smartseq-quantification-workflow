@@ -220,7 +220,7 @@ ARTEFACTS_FASTQS.into {
 
 process quality_contamination {
     
-    conda 'bowtie2=2.3.2 samtools r-data.table'
+    conda 'bowtie2=2.4.5 samtools r-data.table'
     
     memory { 5.GB * task.attempt }
     time { 3.hour * task.attempt }
