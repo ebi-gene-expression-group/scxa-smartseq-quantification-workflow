@@ -1,44 +1,10 @@
 #!/usr/bin/env nextflow
 
+WorkflowParamValidator.validate(params)
+
 sdrfFile = params.sdrf
 resultsRoot = params.resultsRoot
 transcriptomeIndex = params.transcriptomeIndex
-
-def safeToken(value, fieldName) {
-    def text = value == null ? '' : value.toString()
-    if (!(text ==~ /[A-Za-z0-9][A-Za-z0-9._+-]*/)) {
-        throw new IllegalArgumentException("Unsafe SDRF value for ${fieldName}: '${text}'")
-    }
-    text
-}
-
-def safeUri(value, fieldName) {
-    def text = value == null ? '' : value.toString()
-    if (!(text ==~ /[^\p{Cntrl}\s]+/)) {
-        throw new IllegalArgumentException("Unsafe SDRF URI value for ${fieldName}: '${text}'")
-    }
-    text
-}
-
-def safeControlledAccess(value) {
-    def text = value == null ? 'no' : value.toString().toLowerCase()
-    if (!(text in ['yes', 'no'])) {
-        throw new IllegalArgumentException("Unsafe SDRF controlled access value: '${value}'")
-    }
-    text
-}
-
-def safeLayout(value, fieldName) {
-    def text = value == null ? '' : value.toString()
-    if (!(text in ['SINGLE', 'PAIRED'])) {
-        throw new IllegalArgumentException("Unsafe SDRF layout value for ${fieldName}: '${text}'")
-    }
-    text
-}
-
-def shellQuote(value) {
-    "'" + value.toString().replace("'", "'\"'\"'") + "'"
-}
 
 manualDownloadFolder =''
 if ( params.containsKey('manualDownloadFolder')){
@@ -68,13 +34,13 @@ SDRF_FOR_FASTQS
     .map{ row-> 
       controlled_access = 'no'
       if (  params.fields.containsKey('controlled_access')){
-        controlled_access = safeControlledAccess(row["${params.fields.controlled_access}"])
+        controlled_access = WorkflowParamValidator.safeControlledAccess(row["${params.fields.controlled_access}"])
       }
-      def run_uri = safeUri(row["${params.fields.fastq}"], params.fields.fastq)
+      def run_uri = WorkflowParamValidator.safeUri(row["${params.fields.fastq}"], params.fields.fastq)
       tuple(
-        safeToken(row["${params.fields.run}"], params.fields.run),
+        WorkflowParamValidator.safeToken(row["${params.fields.run}"], params.fields.run),
         run_uri,
-        safeToken(file(run_uri).getName(), "${params.fields.fastq} basename"),
+        WorkflowParamValidator.safeToken(file(run_uri).getName(), "${params.fields.fastq} basename"),
         controlled_access
       )
      }
@@ -121,7 +87,7 @@ process download_fastqs {
             if [ -n "$fastqProviderConfig" ] && [ -e "$fastqProviderConfig" ]; then
                 confPart=" -c $fastqProviderConfig"
             fi 
-            fetchFastq.sh -f ${shellQuote(runURI)} -t ${shellQuote(runFastq)} -m ${params.downloadMethod} \$confPart
+            fetchFastq.sh -f ${WorkflowParamValidator.shellQuote(runURI)} -t ${WorkflowParamValidator.shellQuote(runFastq)} -m ${params.downloadMethod} \$confPart
         fi
     """
 }
@@ -453,7 +419,7 @@ process head_counts {
 // Group read files by run name with strandedness
 
 SDRF_FOR_STRAND
-    .map{ row-> tuple(safeToken(row["${params.fields.run}"], params.fields.run), params.fields.containsKey('strand') && row.containsKey(params.fields.strand) ? row["${params.fields.strand}"] : 'not applicable', safeLayout(row["${params.fields.layout}"], params.fields.layout)) }
+    .map{ row-> tuple(WorkflowParamValidator.safeToken(row["${params.fields.run}"], params.fields.run), params.fields.containsKey('strand') && row.containsKey(params.fields.strand) ? row["${params.fields.strand}"] : 'not applicable', WorkflowParamValidator.safeLayout(row["${params.fields.layout}"], params.fields.layout)) }
     .set {
         RUN_META
     }
