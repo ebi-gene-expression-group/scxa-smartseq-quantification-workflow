@@ -1,5 +1,7 @@
 #!/usr/bin/env nextflow
 
+WorkflowParamValidator.validate(params)
+
 sdrfFile = params.sdrf
 resultsRoot = params.resultsRoot
 transcriptomeIndex = params.transcriptomeIndex
@@ -30,11 +32,17 @@ Channel
 
 SDRF_FOR_FASTQS
     .map{ row-> 
-      controlled_access='no'
+      controlled_access = 'no'
       if (  params.fields.containsKey('controlled_access')){
-        controlled_access=row["${params.fields.controlled_access}"]
-      }  
-      tuple(row["${params.fields.run}"], row["${params.fields.fastq}"], file(row["${params.fields.fastq}"]).getName(), controlled_access) 
+        controlled_access = WorkflowParamValidator.safeControlledAccess(row["${params.fields.controlled_access}"])
+      }
+      def run_uri = WorkflowParamValidator.safeUri(row["${params.fields.fastq}"], params.fields.fastq, controlled_access)
+      tuple(
+        WorkflowParamValidator.safeToken(row["${params.fields.run}"], params.fields.run),
+        run_uri,
+        WorkflowParamValidator.safeToken(file(run_uri).getName(), "${params.fields.fastq} basename"),
+        controlled_access
+      )
      }
     .set { FASTQ_RUNS }
 
@@ -63,23 +71,29 @@ process download_fastqs {
         set val(runId), file("${runFastq}") into DOWNLOADED_FASTQS
 
     """
+        DOWNLOAD_METHOD=${WorkflowParamValidator.shellQuote(params.downloadMethod)}
+        MANUAL_DOWNLOAD_FOLDER=${WorkflowParamValidator.shellQuote(manualDownloadFolder)}
+        FASTQ_PROVIDER_CONFIG=${WorkflowParamValidator.shellQuote(fastqProviderConfig)}
+        RUN_FASTQ=${WorkflowParamValidator.shellQuote(runFastq)}
+        CONTROLLED_ACCESS=${WorkflowParamValidator.shellQuote(controlledAccess)}
+
         if ! [ -z "$ATLAS_TMPDIR" ]; then 
             TMPDIR=$ATLAS_TMPDIR; 
         else 
             echo "NOTE: ATLAS_TMPDIR not defined"
         fi
         
-        if [ -n "$manualDownloadFolder" ] && [ -e $manualDownloadFolder/${runFastq} ]; then
-           ln -s $manualDownloadFolder/${runFastq} ${runFastq}
-        elif [ "$controlledAccess" = 'yes' ]; then
-            echo "$runFastq is not available at $manualDownloadFolder/${runFastq} for this controlled access experiment" 1>&2
+        if [ -n "\$MANUAL_DOWNLOAD_FOLDER" ] && [ -e "\$MANUAL_DOWNLOAD_FOLDER/\$RUN_FASTQ" ]; then
+           ln -s "\$MANUAL_DOWNLOAD_FOLDER/\$RUN_FASTQ" "\$RUN_FASTQ"
+        elif [ "\$CONTROLLED_ACCESS" = 'yes' ]; then
+            echo "\$RUN_FASTQ is not available at \$MANUAL_DOWNLOAD_FOLDER/\$RUN_FASTQ for this controlled access experiment" 1>&2
             exit 2
         else
             confPart=''
-            if [ -n "$fastqProviderConfig" ] && [ -e "$fastqProviderConfig" ]; then
-                confPart=" -c $fastqProviderConfig"
+            if [ -n "\$FASTQ_PROVIDER_CONFIG" ] && [ -e "\$FASTQ_PROVIDER_CONFIG" ]; then
+                confPart=" -c \$FASTQ_PROVIDER_CONFIG"
             fi 
-            fetchFastq.sh -f ${runURI} -t ${runFastq} -m ${params.downloadMethod} \$confPart
+            fetchFastq.sh -f ${WorkflowParamValidator.shellQuote(runURI)} -t "\$RUN_FASTQ" -m "\$DOWNLOAD_METHOD" \$confPart
         fi
     """
 }
@@ -132,9 +146,13 @@ process quality_filter {
     beforeScript 'mkdir -p qfilt'
 
     """
-        zcat ${runFastq} | fastq_quality_filter -o qfilt/${runFastq} -v \
-            -Q ${params.fastq_quality_filter.Q} -p ${params.fastq_quality_filter.p} \
-            -q ${params.fastq_quality_filter.q}
+        RUN_FASTQ=${WorkflowParamValidator.shellQuote(runFastq)}
+        FILTER_Q=${WorkflowParamValidator.shellQuote(params.fastq_quality_filter.Q)}
+        FILTER_P=${WorkflowParamValidator.shellQuote(params.fastq_quality_filter.p)}
+        FILTER_QSCORE=${WorkflowParamValidator.shellQuote(params.fastq_quality_filter.q)}
+        zcat "\$RUN_FASTQ" | fastq_quality_filter -o "qfilt/\$RUN_FASTQ" -v \
+            -Q "\$FILTER_Q" -p "\$FILTER_P" \
+            -q "\$FILTER_QSCORE"
    """
 }
 
@@ -155,9 +173,13 @@ process quality_trim {
     beforeScript 'mkdir -p qtrim'
     
     """
-        cat ${runFastq} | fastq_quality_trimmer -v -Q ${params.fastq_quality_trimmer.Q} \
-            -t ${params.fastq_quality_trimmer.t}  -l ${params.fastq_quality_trimmer.l} \
-            -o qtrim/${runFastq}
+        RUN_FASTQ=${WorkflowParamValidator.shellQuote(runFastq)}
+        TRIM_Q=${WorkflowParamValidator.shellQuote(params.fastq_quality_trimmer.Q)}
+        TRIM_T=${WorkflowParamValidator.shellQuote(params.fastq_quality_trimmer.t)}
+        TRIM_L=${WorkflowParamValidator.shellQuote(params.fastq_quality_trimmer.l)}
+        cat "\$RUN_FASTQ" | fastq_quality_trimmer -v -Q "\$TRIM_Q" \
+            -t "\$TRIM_T" -l "\$TRIM_L" \
+            -o "qtrim/\$RUN_FASTQ"
     """
 }
 
@@ -178,9 +200,12 @@ process quality_polya {
     beforeScript 'mkdir -p polyatrim'
     
     """
-        cat ${runFastq} | fastq_trim_poly_at --min_len ${params.fastq_trim_poly_at.min_len} \
-            --min_poly_at_len ${params.fastq_trim_poly_at.min_poly_at_len} \
-            --file - --outfile polyatrim/${runFastq}
+        RUN_FASTQ=${WorkflowParamValidator.shellQuote(runFastq)}
+        MIN_LEN=${WorkflowParamValidator.shellQuote(params.fastq_trim_poly_at.min_len)}
+        MIN_POLY_AT_LEN=${WorkflowParamValidator.shellQuote(params.fastq_trim_poly_at.min_poly_at_len)}
+        cat "\$RUN_FASTQ" | fastq_trim_poly_at --min_len "\$MIN_LEN" \
+            --min_poly_at_len "\$MIN_POLY_AT_LEN" \
+            --file - --outfile "polyatrim/\$RUN_FASTQ"
     """
 }
 
@@ -238,9 +263,12 @@ process quality_contamination {
     beforeScript 'mkdir -p contfilt'
 
     """
-        bowtie2 -p 8 --very-fast --un contfilt/${runFastq} --fast-local --phred33 \
-            -x ${params.contaminationIndex} -U ${runFastq} -S /dev/stdout | \
-            samtools view -S -b -F 4 - > contfilt/${runId}.cont.bam
+        RUN_ID=${WorkflowParamValidator.shellQuote(runId)}
+        RUN_FASTQ=${WorkflowParamValidator.shellQuote(runFastq)}
+        CONTAMINATION_INDEX=${WorkflowParamValidator.shellQuote(params.contaminationIndex)}
+        bowtie2 -p 8 --very-fast --un "contfilt/\$RUN_FASTQ" --fast-local --phred33 \
+            -x "\$CONTAMINATION_INDEX" -U "\$RUN_FASTQ" -S /dev/stdout | \
+            samtools view -S -b -F 4 - > "contfilt/\${RUN_ID}.cont.bam"
     """
 }
 
@@ -269,7 +297,9 @@ process quality_uncalled {
     beforeScript 'mkdir -p uncalled'
     
     """
-        fastq_filter_n -n ${params.fastq_filter_n.n} ${runFastq} | gzip -c - > uncalled/${runFastq}
+        RUN_FASTQ=${WorkflowParamValidator.shellQuote(runFastq)}
+        FILTER_N=${WorkflowParamValidator.shellQuote(params.fastq_filter_n.n)}
+        fastq_filter_n -n "\$FILTER_N" "\$RUN_FASTQ" | gzip -c - > "uncalled/\$RUN_FASTQ"
     """
 }
 
@@ -411,7 +441,7 @@ process head_counts {
 // Group read files by run name with strandedness
 
 SDRF_FOR_STRAND
-    .map{ row-> tuple(row["${params.fields.run}"], params.fields.containsKey('strand') && row.containsKey(params.fields.strand) ? row["${params.fields.strand}"] : 'not applicable', row["${params.fields.layout}"]) }
+    .map{ row-> tuple(WorkflowParamValidator.safeToken(row["${params.fields.run}"], params.fields.run), params.fields.containsKey('strand') && row.containsKey(params.fields.strand) ? row["${params.fields.strand}"] : 'not applicable', WorkflowParamValidator.safeLayout(row["${params.fields.layout}"], params.fields.layout)) }
     .set {
         RUN_META
     }
@@ -469,9 +499,10 @@ if ( params.fields.containsKey('techrep')){
         beforeScript 'mkdir -p merged'
 
         """
-            find . -name '*.fastq.gz' ! -name '*_1.fastq.gz' ! -name '*_2.fastq.gz' -exec cat {} \\; > merged/${groupId}.fastq.gz
-            cat *_1.fastq.gz 2>/dev/null > merged/${groupId}_1.fastq.gz || :
-            cat *_2.fastq.gz 2>/dev/null > merged/${groupId}_2.fastq.gz || :
+            GROUP_ID=${WorkflowParamValidator.shellQuote(groupId)}
+            find . -name '*.fastq.gz' ! -name '*_1.fastq.gz' ! -name '*_2.fastq.gz' -exec cat {} \\; > "merged/\${GROUP_ID}.fastq.gz"
+            cat *_1.fastq.gz 2>/dev/null > "merged/\${GROUP_ID}_1.fastq.gz" || :
+            cat *_2.fastq.gz 2>/dev/null > "merged/\${GROUP_ID}_2.fastq.gz" || :
             find merged -empty -type f -delete 
         """
     } 
@@ -498,25 +529,27 @@ process validate_layout {
        set val(runId), val(strand), val(layout), file('validated/*.fastq.gz') into FINAL_VALIDATED_GROUPED_FASTQS 
 
     """
+        RUN_ID=${WorkflowParamValidator.shellQuote(runId)}
+        LAYOUT=${WorkflowParamValidator.shellQuote(layout)}
         nFastqs=\$(ls *.fastq.gz | wc -l)
         readOnes=\$(ls *_1.fastq.gz | wc -l)
         readTwos=\$(ls *_2.fastq.gz | wc -l)                
         mkdir -p validated
 
-        if [ "$layout" == 'PAIRED' ]; then
+        if [ "\$LAYOUT" == 'PAIRED' ]; then
             if [ "\$nFastqs" -ne 2 ] || [ "\$readOnes" -ne 1 ] || [ "\$readTwos" -ne 1 ]; then
-                echo "Got \$nFastqs FASTQ files for a ${layout}-ended library (\$readOnes read 1, \$readTwos read 2)" 1>&2
+                echo "Got \$nFastqs FASTQ files for a \$LAYOUT-ended library (\$readOnes read 1, \$readTwos read 2)" 1>&2
                 exit 1
             else
-                cp -P *_1.fastq.gz validated/${runId}_1.fastq.gz
-                cp -P *_2.fastq.gz validated/${runId}_2.fastq.gz
+                cp -P *_1.fastq.gz "validated/\${RUN_ID}_1.fastq.gz"
+                cp -P *_2.fastq.gz "validated/\${RUN_ID}_2.fastq.gz"
             fi
 
         elif [ \$nFastqs -ne 1 ]; then
-            echo "Single single-end read file not found for ${runId}" 1>&2        
+            echo "Single single-end read file not found for \$RUN_ID" 1>&2
             exit 1
         else
-            cp -P *.fastq.gz validated/${runId}.fastq.gz
+            cp -P *.fastq.gz "validated/\${RUN_ID}.fastq.gz"
         fi  
     """
 }
@@ -596,9 +629,14 @@ process kallisto_single {
         }
 
         """
-            kallisto quant $strandedness -i ${transcriptomeIndex} --single \
-                -l ${params.kallisto.quant.se.l} -s ${params.kallisto.quant.se.s} \
-                -t ${task.cpus} -o ${runId} ${runFastq}          
+            RUN_ID=${WorkflowParamValidator.shellQuote(runId)}
+            TRANSCRIPTOME_INDEX=${WorkflowParamValidator.shellQuote(transcriptomeIndex)}
+            RUN_FASTQ=${WorkflowParamValidator.shellQuote(runFastq)}
+            SE_L=${WorkflowParamValidator.shellQuote(params.kallisto.quant.se.l)}
+            SE_S=${WorkflowParamValidator.shellQuote(params.kallisto.quant.se.s)}
+            kallisto quant $strandedness -i "\$TRANSCRIPTOME_INDEX" --single \
+                -l "\$SE_L" -s "\$SE_S" \
+                -t ${task.cpus} -o "\$RUN_ID" "\$RUN_FASTQ"
         """
 }
 
@@ -633,7 +671,11 @@ process kallisto_paired {
         }
 
         """
-            kallisto quant ${strandedness} -i ${transcriptomeIndex} -t ${task.cpus} -o ${runId} ${read1} ${read2}          
+            RUN_ID=${WorkflowParamValidator.shellQuote(runId)}
+            TRANSCRIPTOME_INDEX=${WorkflowParamValidator.shellQuote(transcriptomeIndex)}
+            READ_1=${WorkflowParamValidator.shellQuote(read1)}
+            READ_2=${WorkflowParamValidator.shellQuote(read2)}
+            kallisto quant ${strandedness} -i "\$TRANSCRIPTOME_INDEX" -t ${task.cpus} -o "\$RUN_ID" "\$READ_1" "\$READ_2"
         """
 }
 
@@ -681,5 +723,3 @@ process validate_results {
     fi
     """
 }   
-
-
