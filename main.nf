@@ -36,7 +36,7 @@ SDRF_FOR_FASTQS
       if (  params.fields.containsKey('controlled_access')){
         controlled_access = WorkflowParamValidator.safeControlledAccess(row["${params.fields.controlled_access}"])
       }
-      def run_uri = WorkflowParamValidator.safeUri(row["${params.fields.fastq}"], params.fields.fastq)
+      def run_uri = WorkflowParamValidator.safeUri(row["${params.fields.fastq}"], params.fields.fastq, controlled_access)
       tuple(
         WorkflowParamValidator.safeToken(row["${params.fields.run}"], params.fields.run),
         run_uri,
